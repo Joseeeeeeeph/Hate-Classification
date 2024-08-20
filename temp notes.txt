@@ -1,0 +1,7 @@
+General Info:
+- holdout method for partitioning data
+- hugging face tokenizer (https://github.com/huggingface/tokenizers)
+
+Sources:
+- https://deepayan137.github.io/blog/markdown/2020/08/29/building-ocr.html
+- https://arxiv.org/pdf/1507.05717
