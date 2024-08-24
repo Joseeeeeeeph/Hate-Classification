@@ -9,7 +9,12 @@ from torch.utils.data.dataset import random_split
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
-from tokenizers.pre_tokenizers import Whitespace
+#from tokenizers.pre_tokenizers import Whitespace
+
+EPOCHS = 10
+LR = 1.5
+BATCH_SIZE = 16
+CLASSES = 2
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
 
@@ -50,7 +55,9 @@ for entry in data:
     id = entry[0]
     contents = open(os.path.join(all_files_path, f'{id}.txt'), 'r').read()
     entry.append(contents)
-    if id in train_list:
+    if entry[1] == 'idk/skip':
+        continue
+    elif id in train_list:
         train_data.append(tuple(entry[1:]))
     elif id in test_list:
         test_data.append(tuple(entry[1:]))
@@ -63,14 +70,14 @@ n = int(len(training_dataset) * 0.95)
 train_split, valid_split = random_split(training_dataset, [n, len(training_dataset) - n])
 
 tokenizer = Tokenizer(BPE())
-tokenizer.pre_tokenizer = Whitespace()
-tokenizer.train(path_list, trainer=BpeTrainer(special_tokens=["[PAD]", "[CLS]", "[SEP]", "[MASK]", "[UNK]"]))
+#tokenizer.pre_tokenizer = Whitespace()
+tokenizer.train(path_list, trainer=BpeTrainer(special_tokens=["[UNK]", "[PAD]", "[CLS]", "[SEP]", "[MASK]"]))
 text_pipeline = lambda x: tokenizer.encode(x).ids
 
 def collate_batch(batch):
     label_list, text_list, offsets = [], [], [0]
     for (_label, _text) in batch:
-        label_list.append(1 if _label == 'hate' else 0)
+        label_list.append(1 if _label == 'hate' or _label == 'relation' else 0)
         processed_text = torch.tensor(text_pipeline(_text), dtype=torch.int64)
         text_list.append(processed_text)
         offsets.append(processed_text.size(0))
@@ -79,9 +86,9 @@ def collate_batch(batch):
     text_list = torch.cat(text_list)
     return label_list.to(device), text_list.to(device), offsets.to(device)
 
-training_dataloader = DataLoader(train_split, batch_size=8, shuffle=True, collate_fn=collate_batch)
-validation_dataloader = DataLoader(valid_split, batch_size=8, shuffle=True, collate_fn=collate_batch)
-testing_dataloader = DataLoader(testing_dataset, batch_size=8, shuffle=True, collate_fn=collate_batch)
+training_dataloader = DataLoader(train_split, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch)
+validation_dataloader = DataLoader(valid_split, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch)
+testing_dataloader = DataLoader(testing_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch)
 
 class TextClassifier(nn.Module):
     def __init__(self, vocab_size, embed_dim, num_class):
@@ -99,17 +106,12 @@ class TextClassifier(nn.Module):
     def forward(self, text, offsets):
         embedded = self.embedding(text, offsets)
         return self.fc(embedded)
-    
-EPOCHS = 10
-LR = 5.0
-BATCH_SIZE = 64
 
-nClasses = len(set([x[0] for x in training_dataset]))
 vocab_size = tokenizer.get_vocab_size()
 emsize = 64
 total_accuracy = None
 
-model = TextClassifier(vocab_size, emsize, nClasses).to(device)
+model = TextClassifier(vocab_size, emsize, CLASSES).to(device)
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=LR)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.1)
@@ -171,7 +173,7 @@ model = model.to('cpu')
 
 while True:
     message = input('Enter text to classify: ')
-    normalise = lambda x: x.lower().replace('"', ' " ').replace('\'', ' \' ').replace('(', ' ( ').replace(')', ' ) ').replace('?', ' ? ').replace('!', ' ! ').replace(',', ' , ').replace(':', ' : ').replace(';', ' ; ').replace('-', ' - ').replace('  ', ' ').replace('fuck', '****').replace('shit', '****')
+    normalise = lambda x: x.lower().strip('!()}{[]\'"`,.^-_+=/<>:;@#~|¬').replace('&', 'and').replace('fuck', '* * * *').replace('shit', "* * * *").replace('?', ' ? ').replace('colour', 'color')
     if message == '!quit':
         exit()
     else:

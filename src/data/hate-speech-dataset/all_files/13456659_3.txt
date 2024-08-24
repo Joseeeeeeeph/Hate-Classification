@@ -1,1 +1,1 @@
-http://scipio.uark.edu/cdm4/item _ vie ... isobox = 1 & rec = 2
+http://scipio.uark.edu/cdm4/item _ vie ... isobox = 1 and rec = 2

@@ -1,1 +1,1 @@
-http://www.wnd.com/index.php ? fa = page.view & pageid = 100806
+http://www.wnd.com/index.php ? fa = page.view and pageid = 100806

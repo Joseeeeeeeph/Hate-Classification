@@ -1,1 +1,1 @@
-http://u.tv/newsroom/indepth.asp ? id = 63241 & pt = n
+http://u.tv/newsroom/indepth.asp ? id = 63241 and pt = n

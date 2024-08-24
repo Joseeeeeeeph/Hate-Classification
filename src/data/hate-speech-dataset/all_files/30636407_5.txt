@@ -1,1 +1,1 @@
-m & p vtac 45 5
+m and p vtac 45 5
