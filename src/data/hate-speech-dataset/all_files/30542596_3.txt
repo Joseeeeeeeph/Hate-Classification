@@ -1,1 +1,1 @@
-Lager scale .
+lager scale

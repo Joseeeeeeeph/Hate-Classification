@@ -1,1 +1,1 @@
-Pay special attention to the concepts of MEAN and VARIANCE .
+pay special attention to the concepts of mean and variance

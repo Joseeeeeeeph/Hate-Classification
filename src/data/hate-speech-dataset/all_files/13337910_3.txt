@@ -1,1 +1,1 @@
-( Source of quote. )
+( source of quote. )

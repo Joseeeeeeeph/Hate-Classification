@@ -1,1 +1,1 @@
-NATIVE = WHO REACHED THE LAND FIRST
+native = who reached the land first

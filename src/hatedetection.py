@@ -156,5 +156,5 @@ def predict(text, text_pipeline):
     
 model = model.to('cpu')
 
-message = input('\nEnter text to classify: ')
+message = input('\nEnter text to classify: ').lower()
 print('"' + message + '" is {}'.format('hate' if predict(message, text_pipeline) == 1 else 'not hate'))

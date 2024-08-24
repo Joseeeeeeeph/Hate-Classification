@@ -1,1 +1,1 @@
-Gambit denied .
+gambit denied

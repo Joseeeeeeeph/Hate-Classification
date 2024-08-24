@@ -1,1 +1,1 @@
-Go figure .
+go figure

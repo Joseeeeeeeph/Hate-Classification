@@ -1,1 +1,1 @@
-When I try and go there I get a `` Bad Request '' HTML page .
+when i try and go there i get a " bad request " html page
