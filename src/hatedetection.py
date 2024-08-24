@@ -118,7 +118,6 @@ def train(dataloader):
     model.train()
     total_acc, total_count = 0, 0
     log_interval = 500
-    #start_time = time()
 
     for id, (label, text, offsets) in enumerate(dataloader):
         optimizer.zero_grad()
@@ -130,24 +129,22 @@ def train(dataloader):
         total_acc += (predicted_label.argmax(1) == label).sum().item()
         total_count += label.size(0)
         if id % log_interval == 0 and id > 0:
-            #elapsed = time() - start_time
             print('epoch {:3d} | {:5d}/{:5d} batches | accuracy {:8.3f}'.format(epoch, id, len(dataloader), total_acc / total_count))
             total_acc, total_count = 0, 0
-            #start_time = time()
 
 def evaluate(dataloader):
     model.eval()
     total_acc, total_count = 0, 0
 
     with torch.no_grad():
-        for id, (label, text, offsets) in enumerate(dataloader):
+        for _, (label, text, offsets) in enumerate(dataloader):
             predited_label = model(text, offsets)
-            #loss = criterion(predited_label, label)
             total_acc += (predited_label.argmax(1) == label).sum().item()
             total_count += label.size(0)
     return total_acc / total_count
 
-print('\nTraining model:')
+print('\ntraining model:')
+start_time = time()
 for epoch in range(1, EPOCHS + 1):
     epoch_start_time = time()
     train(training_dataloader)
@@ -158,9 +155,11 @@ for epoch in range(1, EPOCHS + 1):
         total_accuracy = validation_accuracy
     print('end of epoch {:3d} | time: {:5.2f}s | accuracy {:8.3f}'.format(epoch, time() - epoch_start_time, validation_accuracy))
 
-print("\nChecking the results of test dataset.")
+
+minutes = lambda s: '{:2d}m {:2.1f}s'.format(int(s // 60), s % 60)
+print("training finished in" + minutes(time() - start_time) + "\n\nChecking the results of test dataset.")
 test_accuracy = evaluate(testing_dataloader)
-print("test accuracy {:8.3f}".format(test_accuracy))
+print("test accuracy {:8.3f}\n".format(test_accuracy))
 
 def predict(text, text_pipeline):
     with torch.no_grad():
@@ -172,5 +171,8 @@ model = model.to('cpu')
 
 while True:
     message = input('Enter text to classify: ')
-    normalise = lambda x: x.lower().replace('"', ' " ').replace('\'', ' \' ').replace('(', ' ( ').replace(')', ' ) ').replace('?', ' ? ').replace('!', ' ! ').replace(',', ' , ').replace(':', ' : ').replace(';', ' ; ').replace('-', ' - ').replace('  ', ' ')
-    print('"' + message + '" is {}\n'.format('hate' if predict(normalise(message), text_pipeline) == 1 else 'not hate'))
+    normalise = lambda x: x.lower().replace('"', ' " ').replace('\'', ' \' ').replace('(', ' ( ').replace(')', ' ) ').replace('?', ' ? ').replace('!', ' ! ').replace(',', ' , ').replace(':', ' : ').replace(';', ' ; ').replace('-', ' - ').replace('  ', ' ').replace('fuck', '****').replace('shit', '****')
+    if message == '!quit':
+        exit()
+    else:
+        print('"' + message + '" is {}\n'.format('hate' if predict(normalise(message), text_pipeline) == 1 else 'not hate'))
