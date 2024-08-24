@@ -2,6 +2,7 @@ import os
 import torch
 import pandas as pd
 from time import time
+from math import ceil
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.dataset import random_split
@@ -22,14 +23,25 @@ class HateSpeechDataset(Dataset):
     
     def __len__(self):
         return len(self.contents)
+    
+def holdout(data_list, all_path, train_path, test_path):
+    head = len(all_path) + 1
+    tail = -len('.txt')
+    training = [f[:tail] for f in os.listdir(train_path)]
+    testing = [f[:tail] for f in os.listdir(test_path)]
+    remaining = [f[head:tail] for f in data_list if f[head:tail] not in training and f[head:tail] not in testing]
+    partition = int(ceil(0.7 * len(remaining)))
+    training = training + remaining[:partition]
+    testing = testing + remaining[partition:]
+    
+    return training, testing
 
 dataset_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/hate-speech-dataset')
 all_files_path = os.path.join(dataset_path, 'all_files')
 train_path = os.path.join(dataset_path, 'sampled_train')
 test_path = os.path.join(dataset_path, 'sampled_test')
 path_list = [os.path.join(all_files_path, f) for f in os.listdir(all_files_path)]
-train_list = [f[:-4] for f in os.listdir(train_path)]
-test_list = [f[:-4] for f in os.listdir(test_path)]
+train_list, test_list = holdout(path_list, all_files_path, train_path, test_path)
 
 train_data = []
 test_data = []
@@ -42,6 +54,8 @@ for entry in data:
         train_data.append(tuple(entry[1:]))
     elif id in test_list:
         test_data.append(tuple(entry[1:]))
+    else:
+        print('Could not allocate:', id)
 
 training_dataset = HateSpeechDataset(train_data)
 testing_dataset = HateSpeechDataset(test_data)
@@ -104,7 +118,7 @@ def train(dataloader):
     model.train()
     total_acc, total_count = 0, 0
     log_interval = 500
-    start_time = time()
+    #start_time = time()
 
     for id, (label, text, offsets) in enumerate(dataloader):
         optimizer.zero_grad()
@@ -116,10 +130,10 @@ def train(dataloader):
         total_acc += (predicted_label.argmax(1) == label).sum().item()
         total_count += label.size(0)
         if id % log_interval == 0 and id > 0:
-            elapsed = time() - start_time
+            #elapsed = time() - start_time
             print('epoch {:3d} | {:5d}/{:5d} batches | accuracy {:8.3f}'.format(epoch, id, len(dataloader), total_acc / total_count))
             total_acc, total_count = 0, 0
-            start_time = time()
+            #start_time = time()
 
 def evaluate(dataloader):
     model.eval()
@@ -128,7 +142,7 @@ def evaluate(dataloader):
     with torch.no_grad():
         for id, (label, text, offsets) in enumerate(dataloader):
             predited_label = model(text, offsets)
-            loss = criterion(predited_label, label)
+            #loss = criterion(predited_label, label)
             total_acc += (predited_label.argmax(1) == label).sum().item()
             total_count += label.size(0)
     return total_acc / total_count
@@ -152,9 +166,11 @@ def predict(text, text_pipeline):
     with torch.no_grad():
         text = torch.tensor(text_pipeline(text), dtype=torch.int64)
         output = model(text, torch.tensor([0]))
-        return output.argmax(1).item() + 1
+        return output.argmax(1).item()
     
 model = model.to('cpu')
 
-message = input('\nEnter text to classify: ').lower()
-print('"' + message + '" is {}'.format('hate' if predict(message, text_pipeline) == 1 else 'not hate'))
+while True:
+    message = input('Enter text to classify: ')
+    normalise = lambda x: x.lower().replace('"', ' " ').replace('\'', ' \' ').replace('(', ' ( ').replace(')', ' ) ').replace('?', ' ? ').replace('!', ' ! ').replace(',', ' , ').replace(':', ' : ').replace(';', ' ; ').replace('-', ' - ').replace('  ', ' ')
+    print('"' + message + '" is {}\n'.format('hate' if predict(normalise(message), text_pipeline) == 1 else 'not hate'))

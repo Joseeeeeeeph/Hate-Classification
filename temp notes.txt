@@ -1,5 +1,5 @@
 General Info:
-- holdout method for partitioning data
+- holdout method for partitioning data (70%-30%)
 - hugging face tokenizer (https://github.com/huggingface/tokenizers)
 
 Sources:
