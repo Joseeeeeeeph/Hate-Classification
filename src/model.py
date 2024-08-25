@@ -11,10 +11,13 @@ from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
 #from tokenizers.pre_tokenizers import Whitespace
 
+# Hyperparameters:
 EPOCHS = 10
-LR = 1.5
+LR = 2
 BATCH_SIZE = 16
-CLASSES = 2
+WEIGHT_DECAY = 0.0001
+DROP_OUT = 0.3
+PATIENCE = 5
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
 
@@ -22,6 +25,7 @@ class HateSpeechDataset(Dataset):
     def __init__(self, contents):
         super(HateSpeechDataset, self).__init__()
         self.contents = contents
+        self.nClasses = len(set(['hate', 'noHate']))
 
     def __getitem__(self, index):
         return self.contents[index]
@@ -90,11 +94,12 @@ training_dataloader = DataLoader(train_split, batch_size=BATCH_SIZE, shuffle=Tru
 validation_dataloader = DataLoader(valid_split, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch)
 testing_dataloader = DataLoader(testing_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch)
 
-class TextClassifier(nn.Module):
+class ClassifierNN(nn.Module):
     def __init__(self, vocab_size, embed_dim, num_class):
-        super(TextClassifier, self).__init__()
+        super(ClassifierNN, self).__init__()
         self.embedding = nn.EmbeddingBag(vocab_size, embed_dim, sparse=False)
         self.fc = nn.Linear(embed_dim, num_class)
+        self.dropout = nn.Dropout(DROP_OUT)
         self.init_weights()
 
     def init_weights(self):
@@ -111,9 +116,9 @@ vocab_size = tokenizer.get_vocab_size()
 emsize = 64
 total_accuracy = None
 
-model = TextClassifier(vocab_size, emsize, CLASSES).to(device)
+model = ClassifierNN(vocab_size, emsize, training_dataset.nClasses).to(device)
 criterion = torch.nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=LR)
+optimizer = torch.optim.SGD(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.1)
 
 def train(dataloader):
@@ -135,30 +140,54 @@ def train(dataloader):
             total_acc, total_count = 0, 0
 
 def evaluate(dataloader):
+    global val_loss
     model.eval()
     total_acc, total_count = 0, 0
 
     with torch.no_grad():
         for _, (label, text, offsets) in enumerate(dataloader):
-            predited_label = model(text, offsets)
-            total_acc += (predited_label.argmax(1) == label).sum().item()
+            predicted_label = model(text, offsets)
+            total_acc += (predicted_label.argmax(1) == label).sum().item()
             total_count += label.size(0)
+            val_loss += criterion(predicted_label, label).item()
     return total_acc / total_count
 
-print('\ntraining model:')
+best_loss = float('inf')
+patience_counter = 0
 start_time = time()
+
+print('\ntraining model:')
 for epoch in range(1, EPOCHS + 1):
     epoch_start_time = time()
     train(training_dataloader)
+    val_loss = 0
     validation_accuracy = evaluate(validation_dataloader)
+    val_loss /= len(validation_dataloader)
+
     if total_accuracy is not None and total_accuracy > validation_accuracy:
         scheduler.step()
     else:
         total_accuracy = validation_accuracy
     print('end of epoch {:3d} | time: {:5.2f}s | accuracy {:8.3f}'.format(epoch, time() - epoch_start_time, validation_accuracy))
 
+    if val_loss < best_loss:
+        best_loss = val_loss
+        patience_counter = 0
+    else:
+        patience_counter += 1
+    if patience_counter >= PATIENCE:
+        print('early stopping.')
+        break
 
-minutes = lambda s: '{:2d}m {:2.1f}s'.format(int(s // 60), s % 60)
+
+def minutes(t):
+    mins = int(t // 60)
+    secs = t % 60
+    if mins > 0:
+        return '{:2d}m {:2.1f}s'.format(mins, secs)
+    else:
+        return ' {:2.1f}s'.format(secs)
+
 print("training finished in" + minutes(time() - start_time) + "\n\nChecking the results of test dataset.")
 test_accuracy = evaluate(testing_dataloader)
 print("test accuracy {:8.3f}\n".format(test_accuracy))
@@ -170,11 +199,3 @@ def predict(text, text_pipeline):
         return output.argmax(1).item()
     
 model = model.to('cpu')
-
-while True:
-    message = input('Enter text to classify: ')
-    normalise = lambda x: x.lower().strip('!()}{[]\'"`,.^-_+=/<>:;@#~|¬').replace('&', 'and').replace('fuck', '* * * *').replace('shit', "* * * *").replace('?', ' ? ').replace('colour', 'color')
-    if message == '!quit':
-        exit()
-    else:
-        print('"' + message + '" is {}\n'.format('hate' if predict(normalise(message), text_pipeline) == 1 else 'not hate'))

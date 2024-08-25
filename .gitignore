@@ -1,4 +1,4 @@
 src/data/TextOCR
 temp notes.txt
 src/ocr.py
-src/lr tuner.py
+src/data/hate-speech-dataset/README.md
