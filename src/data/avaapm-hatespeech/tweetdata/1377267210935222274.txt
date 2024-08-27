@@ -1,3 +1,0 @@
-Younger developer wants to merge Sex and Gender into a single shared view.
-
-Yeah... this is a hill i'm willing to die on in this system.

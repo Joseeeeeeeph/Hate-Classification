@@ -1,1 +1,0 @@
-You have two stats: genders and secrets. If one die succeeds, become the gender of honor.
