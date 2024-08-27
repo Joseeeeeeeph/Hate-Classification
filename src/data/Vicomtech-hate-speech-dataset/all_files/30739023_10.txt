@@ -1,0 +1,1 @@
+a : 20 yards q : if 3 feet = 1 yard , what distance ( in feet ) was johnny 's 20 yard football pass?
