@@ -1,0 +1,2 @@
+russian roulette: 
+pick the most voted option and you’re dead

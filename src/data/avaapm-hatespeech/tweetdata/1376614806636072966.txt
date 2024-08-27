@@ -1,0 +1,3 @@
+Our researchers discovered a Russian user recruiting for a ransomware attack. The user's activity has included searching for a service or someone with hash cracking capabilities, searching to buy 1-0 day RCE to corp VPN, and Cobalt Strike’s Beacon.
+
+#EBCS #Cybercrime #Ransomware https://t.co/7xsA8ikaY1
