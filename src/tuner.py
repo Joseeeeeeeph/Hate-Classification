@@ -1,4 +1,6 @@
+import os
 import torch
+import pickle as pl
 
 from model import ClassifierNN, training_dataloader, validation_dataloader, testing_dataloader, device, vocab_size, emsize
 
@@ -30,6 +32,24 @@ def reset():
     dropout.set(0.3)
     patience.set(4)
 
+def store(hyperparameter, values):
+    pkl_name = hyperparameter + '.pkl'
+    iteration = 0
+    cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '__pycache__')
+    if os.path.isfile(cache_path):
+        os.makedirs(cache_path)
+    file_path = os.path.join(cache_path, pkl_name)
+
+    while True:
+        if os.path.isfile(file_path):
+            iteration += 1
+            pkl_name = hyperparameter + f'{iteration}.pkl'
+            file_path = os.path.join(cache_path, pkl_name)
+        else:
+            break
+    
+    with open(file_path, 'wb') as file: pl.dump(values, file)
+
 best_accuracy = 0
 best_val = None
 best_value_list = []
@@ -37,13 +57,15 @@ classes = 2
 scale = 1
 val_loss = 0
 
-def hyperparameter_tuning(hyperparameter, controls):
+def hyperparameter_tuning(hyperparameter, controls, write=False):
 #    controls := (start, end, step) where:
 #       start := starting value of hyperparameter
 #       end := ending value of hyperparameter
 #       step := how many values inbetween
+#    write := whether to store the results in a .pkl file
 
     global best_accuracy, best_val
+    all_scores = []
 
     start, end, step = controls
     if type(start) is not int or type(end) is not int or type(step) is not int:
@@ -123,16 +145,17 @@ def hyperparameter_tuning(hyperparameter, controls):
             best_accuracy = test_accuracy
             best_val = hyperparameter.get()
 
-    print('\nTuning complete with ' + hyperparameter.__str__() + ' = {} with an accuracy of {}'.format(best_val, best_accuracy))
     best_value_list.append((hyperparameter.__str__(), best_val))
+    if write: store(hyperparameter.__str__(), all_scores)
+    print('\nTuning complete with ' + hyperparameter.__str__() + ' = {} with an accuracy of {}'.format(best_val, best_accuracy))
     reset()
 
 # >>>
-hyperparameter_tuning(lr, (0.1, 6, 0.1))
-hyperparameter_tuning(weight_decay, (0, 0.01, 0.0001))
-hyperparameter_tuning(weight_decay, (0, 0.1, 0.001))
-hyperparameter_tuning(weight_decay, (0, 1, 0.1))
-hyperparameter_tuning(dropout, (0, 0.8, 0.1))
-hyperparameter_tuning(patience, (2, 10, 1))
+hyperparameter_tuning(lr, (0.1, 6, 0.1), write=True)
+hyperparameter_tuning(weight_decay, (0, 0.01, 0.0001), write=True)
+hyperparameter_tuning(weight_decay, (0, 0.1, 0.001), write=True)
+hyperparameter_tuning(weight_decay, (0, 1, 0.1), write=True)
+hyperparameter_tuning(dropout, (0, 0.8, 0.1), write=True)
+hyperparameter_tuning(patience, (2, 10, 1), write=True)
 
-print('\nBest hyperparameters:\n {}'.format(best_value_list))
+print(f'\nBest hyperparameters:\n {best_value_list}')

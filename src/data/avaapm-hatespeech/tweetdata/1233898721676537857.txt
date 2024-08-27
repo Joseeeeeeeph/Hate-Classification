@@ -1,0 +1,4 @@
+customer: *tells me his very greek name*
+me: wow that's very Greek
+customer: how do u know that
+me: https://t.co/BjIb0V8tGQ

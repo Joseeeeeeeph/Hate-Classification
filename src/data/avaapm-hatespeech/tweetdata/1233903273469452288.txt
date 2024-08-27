@@ -1,0 +1,1 @@
+#linux #kernel  Re: [PATCH 1/3] ARM: dts: rockchip: add sram to bus_intmem nodename for… https://t.co/JGOqwPiYtA

@@ -1,0 +1,3 @@
+For those who read my tweet from last night about this hotel computer which has a P4 processor and 1.5gb ram. I installed Debian + xfce on it.
+
+I hope the owner forgives me for it. Plenty german tourists visit as well. So mandatory german translation ;-) https://t.co/451xUvo7Rb

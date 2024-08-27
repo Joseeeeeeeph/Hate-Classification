@@ -1,0 +1,1 @@
+"panic-then-forget cycle was broken briefly in 2014, when Ebola tore through West Africa. President Barack Obama created a new office and established a special emergency fund to improve federal response efforts"

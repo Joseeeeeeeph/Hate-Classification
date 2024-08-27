@@ -1,0 +1,8 @@
+Greek islands temperatures
+#Fira: 11℃
+#Rhodes: 10℃
+#Mykonos: 11℃
+#Zakynthos: 4℃
+#Corfu: 6℃
+#Naxos: 11℃
+#Skiathos: 5℃
