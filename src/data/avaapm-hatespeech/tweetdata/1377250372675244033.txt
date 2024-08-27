@@ -1,0 +1,4 @@
+Birthdate: September 22
+Sex: Gender Male 
+Blood type: AB
+#info #bot

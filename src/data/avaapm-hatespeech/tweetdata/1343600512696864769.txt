@@ -1,0 +1,11 @@
+Patient name: vasu s
+Age: 29
+Gender: male
+Blood group: A+
+No of units : 1 sdp 
+Fresh/packets: fresh
+Purpose : low platelets 
+Need by 28th dec 2020
+Hospital name/ location :hgc cancer hospital 
+Contact: 7799852626
+@BloodAid
