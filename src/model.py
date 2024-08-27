@@ -91,7 +91,7 @@ tweets_path = os.path.join(avaapm_path, 'tweetdata')
 avaapm_path_list = [os.path.join(tweets_path, f) for f in os.listdir(tweets_path)]
 avaapm_id_list = [int(f[:-4]) for f in os.listdir(tweets_path)]
 avaapm_train_list, avaapm_test_list = holdout(avaapm_path_list, tweets_path, '', '')
-avaapm_csv = pd.read_csv(os.path.join(avaapm_path, 'dataset_v2/hate_speech_dataset_v2.csv'), usecols=['TweetID', 'LangID', 'HateLabel'])
+avaapm_csv = pd.read_csv(os.path.join(avaapm_path, 'label.csv'), usecols=['TweetID', 'LangID', 'HateLabel'])
 avaapm_csv_en = avaapm_csv[avaapm_csv['LangID'] == 1]
 filtered_csv_en = avaapm_csv_en[avaapm_csv_en['TweetID'].isin(avaapm_id_list)]
 avaapm_data = filtered_csv_en[['TweetID', 'HateLabel']].values.tolist()
