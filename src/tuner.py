@@ -2,12 +2,6 @@ import torch
 
 from model import ClassifierNN, training_dataloader, validation_dataloader, testing_dataloader, device, vocab_size, emsize
 
-# Hyper-hyperparameters: -------------------
-start = 1
-end = 3
-step = 0.1
-# ------------------------------------------
-
 class ptr():
     def __init__(self, id, value): 
         self.value = value
@@ -23,19 +17,32 @@ class ModifiedNN(ClassifierNN):
         self.dropout = torch.nn.Dropout(dropout)
 
 # Hyperparameters:
-lr = ptr('LR', 5)
-epochs = ptr('Epochs', 10)
-weight_decay = ptr('Weight Decay', 0)
+lr = ptr('LR', 2)
+epochs = ptr('Epochs', 16)
+weight_decay = ptr('Weight Decay', 0.0001)
 dropout = ptr('Dropout', 0.3)
-patience = ptr('Patience', 5)
+patience = ptr('Patience', 4)
+
+def reset():
+    lr.set(2)
+    epochs.set(16)
+    weight_decay.set(0.0001)
+    dropout.set(0.3)
+    patience.set(4)
 
 best_accuracy = 0
 best_val = None
+best_value_list = []
 classes = 2
 scale = 1
 val_loss = 0
 
 def hyperparameter_tuning(hyperparameter, controls):
+#    controls := (start, end, step) where:
+#       start := starting value of hyperparameter
+#       end := ending value of hyperparameter
+#       step := how many values inbetween
+
     global best_accuracy, best_val
 
     start, end, step = controls
@@ -117,6 +124,15 @@ def hyperparameter_tuning(hyperparameter, controls):
             best_val = hyperparameter.get()
 
     print('\nTuning complete with ' + hyperparameter.__str__() + ' = {} with an accuracy of {}'.format(best_val, best_accuracy))
+    best_value_list.append((hyperparameter.__str__(), best_val))
+    reset()
 
 # >>>
-hyperparameter_tuning(lr, (start, end, step))
+hyperparameter_tuning(lr, (0.1, 6, 0.1))
+hyperparameter_tuning(weight_decay, (0, 0.01, 0.0001))
+hyperparameter_tuning(weight_decay, (0, 0.1, 0.001))
+hyperparameter_tuning(weight_decay, (0, 1, 0.1))
+hyperparameter_tuning(dropout, (0, 0.8, 0.1))
+hyperparameter_tuning(patience, (2, 10, 1))
+
+print('\nBest hyperparameters:\n {}'.format(best_value_list))
