@@ -2,10 +2,10 @@ import os
 import requests
 import pandas as pd
 
-dataset_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/avaapm-hatespeech/dataset_v2')
-storage_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/avaapm-hatespeech/tweetdata')
+dataset_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/avaapm-hatespeech')
+storage_path = os.path.join(dataset_path, 'tweetdata')
 
-csv = pd.read_csv(os.path.join(dataset_path, 'hate_speech_dataset_v2.csv'), usecols=['TweetID', 'LangID', 'HateLabel'])
+csv = pd.read_csv(os.path.join(dataset_path, 'label.csv'), usecols=['TweetID', 'LangID', 'HateLabel'])
 csv_en = csv[csv['LangID'] == 1]
 ids = csv_en['TweetID'].values.tolist()
 
