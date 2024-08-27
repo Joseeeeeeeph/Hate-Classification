@@ -1,0 +1,2 @@
+Really simple solution!!
+Don’t count any questionable vote.          Votes from dead people, votes from out of state, multiple votes from same person, votes from fictitious persons all get removed from the count. If that happened, how would things look?
