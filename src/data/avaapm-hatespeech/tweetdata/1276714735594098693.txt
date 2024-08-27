@@ -1,0 +1,3 @@
+Damn it took me 5 hours just to deobfuscate a LNK file with an embedded powershell that drops an infected file that beacons to suspicious Russian sites and related to Cobalt Strike
+
+But IT WAS FUN
