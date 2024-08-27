@@ -1,1 +1,0 @@
-it looks like i have to create my own copy of pdf file , since the op version is a read-only item. ( sigh 

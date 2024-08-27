@@ -1,1 +1,0 @@
-when i try and go there i get a " bad request " html page

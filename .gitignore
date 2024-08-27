@@ -1,4 +1,5 @@
-src/data/TextOCR
 temp notes.txt
-src/ocr.py
-src/data/hate-speech-dataset/README.md
+src/data/Vicomtech-hate-speech-dataset/README.md
+src/data/avaapm-hatespeech/README.md
+src/data/avaapm-hatespeech/dataset_v2/readme.md
+src/data/avaapm-hatespeech/dataset_v2/hate_speech_dataset_v2_labeler.csv
