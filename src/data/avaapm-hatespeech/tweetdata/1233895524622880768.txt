@@ -1,12 +1,1 @@
-MPSSAA Boys Basketball Top 50+
-
-11 Dulaney (16-5)
-12 Douglass PG (17-5)
-13 Wicomico (22-1)
-14 Wise (17-5)
-15 Mervo (15-5)
-16 Parkville (19-3)
-17 Springbrook (19-3)
-18 Great Mills (19-4)
-19 Richard Montgomery (18-4)
-20 Reservoir (18-4)
+mpssaa boys basketball top 50 11 dulaney 16 5 12 douglass pg 17 5 13 wicomico 22 1 14 wise 17 5 15 mervo 15 5 16 parkville 19 3 17 springbrook 19 3 18 great mills 19 4 19 richard montgomery 18 4 20 reservoir 18 4

@@ -1,5 +1,1 @@
-Name: Noa
-Gender: GIRL
-Popularity: 941
-Percentage of Population: 0.0147%
-#babynames #babynamesdaily
+name noa gender girl popularity 941 percentage of population 00147% babynames babynamesdaily

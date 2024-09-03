@@ -1,12 +1,1 @@
-MPSSAA Boys Basketball Top 50+
-
-1 Poly (21-2)
-2 St Charles (23-1)
-3 Oxon Hill (21-3)
-4 New Town (23-1)
-5 Lake Clifton (18-5)
-6 City College (21-2)
-7 Potomac (21-2)
-8 Eleanor Roosevelt (20-3)
-9 Edmondson (18-4)
-10 Woodlawn (20-4)
+mpssaa boys basketball top 50 1 poly 21 2 2 st charles 23 1 3 oxon hill 21 3 4 new town 23 1 5 lake clifton 18 5 6 city college 21 2 7 potomac 21 2 8 eleanor roosevelt 20 3 9 edmondson 18 4 10 woodlawn 20 4

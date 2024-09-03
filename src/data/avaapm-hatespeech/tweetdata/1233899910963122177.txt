@@ -1,16 +1,1 @@
-#COVID19 deaths outside mainland China - as of Mar 1 23:00 GMT
---------
-Iran - 43
-Italy - 29
-South Korea - 17
-Diamond Princess - 6
-Japan - 5
-France - 2
-Hong Kong - 2
-Philippines - 1
-Taiwan - 1
-USA - 1
---------
-Total - 107
---------
-#coronavirus #SARSCoV2 https://t.co/bpFfdLTltT
+covid19 deaths outside mainland china as of mar 1 2300 gmt iran 43 italy 29 south korea 17 diamond princess 6 japan 5 france 2 hong kong 2 philippines 1 taiwan 1 usa 1 total 107 coronavirus sarscov2

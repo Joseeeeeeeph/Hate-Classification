@@ -1,1 +1,1 @@
-I'm now a believer in TL-Smoothers for Delta printers. Thanks to @Radioman1017 for the suggestion. Check out the before/after photo. Same file. Installation was easy, although I had to solder because the connectors were different than the steppers. So far, so good. 💪😎👍 https://t.co/QZfsruFeBt
+im now a believer in tl smoothers for delta printers thanks to radioman1017 for the suggestion check out the beforeafter photo same file installation was easy although i had to solder because the connectors were different than the steppers so far so good 

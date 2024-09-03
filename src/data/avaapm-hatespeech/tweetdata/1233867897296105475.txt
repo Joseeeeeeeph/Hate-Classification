@@ -1,7 +1,1 @@
-Name: Satoshi Aoshi 
-Race: Human 
-Gender: Male 
-Height: 8 feet 5 inches 
-Hair Color: Somber Red
-Build: Curvy 
-Personality: The Guardian
+name satoshi aoshi race human gender male height 8 feet 5 inches hair color somber red build curvy personality the guardian

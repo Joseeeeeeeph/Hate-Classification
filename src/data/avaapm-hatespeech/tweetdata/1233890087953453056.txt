@@ -1,16 +1,1 @@
-.@NCAA D2 Men's Basketball
-Lee University Flames 28
-#20-UAH Chargers 36
-Halftime
-
-@LeeUMBball 21-5
-16-3 @GulfSouth (2nd)
-W2 streak
-
-@ChargerMBB 22-5
-14-5 @GulfSouth (3rd)
-W5 streak
-
-All-time series:
-10-3, @ChargerMBB
-W1 streak, @LeeUMBball
+ncaa d2 mens basketball lee university flames 28 20 uah chargers 36 halftime leeumbball 21 5 16 3 gulfsouth 2nd w2 streak chargermbb 22 5 14 5 gulfsouth 3rd w5 streak all time series 10 3 chargermbb w1 streak leeumbball

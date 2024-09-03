@@ -1,3 +1,1 @@
-ⴃ
-code:2D03
-GEORGIAN SMALL LETTER DON(Georgian Supplement)
+ code2d03 georgian small letter dongeorgian supplement

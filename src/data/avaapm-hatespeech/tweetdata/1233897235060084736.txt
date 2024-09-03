@@ -1,4 +1,1 @@
-Class D Boys Section 2 Varsity Basketball Halftime Score:
-OESJ - 23
-North Warren - 37
-#518basketball
+class d boys section 2 varsity basketball halftime score oesj 23 north warren 37 518basketball

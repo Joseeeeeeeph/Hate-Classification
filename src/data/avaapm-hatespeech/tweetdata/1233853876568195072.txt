@@ -1,5 +1,1 @@
-Gender: Female
-Age: 65+ (Appears 17)
-Birthday: February 17th
-Height: 172 cm
-Weight: 63 kg
+gender female age 65 appears 17 birthday february 17th height 172 cm weight 63 kg

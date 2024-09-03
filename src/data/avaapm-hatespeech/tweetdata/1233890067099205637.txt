@@ -1,10 +1,1 @@
-#SFGiants pitchers with no minor-league options remaining:
-
-LHP Jarlin Garcia
-RHP Trevor Gott
-RHP Jesus Liranzo
-
-#SFGiants pitchers that can't be optioned to minors:
-
-Watson, Smyly, Gausman, Cueto, Samardzija, Blevins, Ross, Cahill, Vincent
-RHP Dany Jimenez (Rule 5)
+sfgiants pitchers with no minor league options remaining lhp jarlin garcia rhp trevor gott rhp jesus liranzo sfgiants pitchers that cant be optioned to minors watson smyly gausman cueto samardzija blevins ross cahill vincent rhp dany jimenez rule 5

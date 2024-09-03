@@ -1,4 +1,1 @@
-Class D Boys Section 2 Varsity Basketball 1st Quarter:
-OESJ - 12
-North Warren - 18
-#518basketball
+class d boys section 2 varsity basketball 1st quarter oesj 12 north warren 18 518basketball

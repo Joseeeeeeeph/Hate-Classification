@@ -1,11 +1,1 @@
-NCAA basketball status 
-
-KU beat K-State: Expected 
-Texas beat Texas Tech: Unexpected
-TCU beat Baylor: Unexpected 
-Oklahoma State beat Iowa State: Idc 
-Providence beat Villinova: Unexpected 
-Iowa beat Penn State: Unexpected
-Clemson bat FSU: Unexpected 
-
-#SaturdayBasketball
+ncaa basketball status ku beat k state expected texas beat texas tech unexpected tcu beat baylor unexpected oklahoma state beat iowa state idc providence beat villinova unexpected iowa beat penn state unexpected clemson bat fsu unexpected saturdaybasketball
