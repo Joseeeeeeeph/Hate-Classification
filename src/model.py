@@ -94,7 +94,7 @@ avaapm_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/av
 tweets_path = os.path.join(avaapm_path, 'tweetdata')
 avaapm_path_list = [os.path.join(tweets_path, f) for f in os.listdir(tweets_path)]
 
-data_cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '__pycache__/data_cache.pkl')
+data_cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/data.pkl')
 
 if os.path.isfile(data_cache_path): 
     with open(data_cache_path, 'rb') as file:

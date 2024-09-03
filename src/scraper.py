@@ -16,6 +16,7 @@ for id in ids:
         text = requests.get(url).json()['text']
         file = open(os.path.join(storage_path, f'{id}.txt'), 'w')
         file.write(text)
+        file.close()
         print(f"Getting tweet {id}: success")
     except:
         print(f"Getting tweet {id}: fail")

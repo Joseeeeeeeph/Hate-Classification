@@ -1,1 +1,1 @@
-cve 2020 28173 simple college website 10 allows a user to conduct remote code execution via alumniadminajaxphp?actionsave settings when uploading a malicious file using the image upload functionality which 
+cve 2020 28173 simple college website 10 allows a user to conduct remote code execution via alumniadminajaxphpactionsave settings when uploading a malicious file using the image upload functionality which

@@ -1,1 +1,1 @@
-norway 33 2001  39 2002  35 2003  18 2004  assuming population of 45 million sweden 26 2001  37 2002  35 2003  26 2004  assuming population of 89 million iceland is at about 02
+norway 33 2001 39 2002 35 2003 18 2004 assuming population of 45 million sweden 26 2001 37 2002 35 2003 26 2004 assuming population of 89 million iceland is at about 02
