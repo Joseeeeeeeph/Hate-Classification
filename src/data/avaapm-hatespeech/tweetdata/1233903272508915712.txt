@@ -1,1 +1,1 @@
-#linux #kernel  Re: [PATCH V3 03/13] kprobes: Add symbols for kprobe insn pages https://t.co/6AmZijEgHy
+linux kernel re patch v3 0313 kprobes add symbols for kprobe insn pages

@@ -1,1 +1,1 @@
-My thanks to the makers of Toast UI Calendar (https://t.co/aoqkT7gda9), which enabled this JavaScript newbie to make a tolerable weekly calendar without much drama. Can’t find a twitter handle for this Korean company. @nhn_usa is the closest I came. https://t.co/XNGJI8iYxK
+my thanks to the makers of toast ui calendar which enabled this javascript newbie to make a tolerable weekly calendar without much drama can’t find a twitter handle for this korean company nhn usa is the closest i came

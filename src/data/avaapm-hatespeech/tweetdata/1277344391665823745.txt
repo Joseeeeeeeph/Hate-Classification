@@ -1,3 +1,1 @@
-using @webcaptioner to add russian subtitles to russian tv shows that inexplicably don't have them woo
-
-need to figure out how to feed it into an auto-translate api for my non-russophone friends, but its good shit op
+using webcaptioner to add russian subtitles to russian tv shows that inexplicably dont have them woo need to figure out how to feed it into an auto translate api for my non russophone friends but its good shit op
