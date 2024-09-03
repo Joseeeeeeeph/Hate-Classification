@@ -1,11 +1,1 @@
-#culture : the act or practice of cultivating, or of preparing the earth for seed and raising crops by tillage
-
-- French: culture
-
-- German: die Kultur
-
-- Italian: cultura
-
-- Portuguese: cultura
-
-- Spanish: la cultura
+culture the act or practice of cultivating or of preparing the earth for seed and raising crops by tillage french culture german die kultur italian cultura portuguese cultura spanish la cultura

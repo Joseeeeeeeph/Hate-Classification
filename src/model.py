@@ -14,7 +14,7 @@ from tokenizers.trainers import BpeTrainer
 # Hyperparameters:
 EPOCHS = 16
 LR = 2
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 WEIGHT_DECAY = 0.0001
 DROP_OUT = 0.3
 PATIENCE = 5

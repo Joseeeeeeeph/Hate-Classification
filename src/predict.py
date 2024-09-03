@@ -1,6 +1,9 @@
 import model
 
-normalise = lambda x: x.lower().strip('!()}{[]\'"`,.^-_+=/<>:;@#~|¬').replace('&', 'and').replace('fuck', '****').replace('shit', "****").replace('colour', 'color').replace('centre', 'center').replace('favourite', 'favorite').replace('theatre', 'theater').replace(' ?', '?').replace('* * * *', '****').replace('* * *', '***').replace('* *', '**')
+remove_links = lambda x: ' '.join([s for s in x.split() if 'http' not in s])
+remove_punctuation = lambda x: ''.join([c for c in x if c not in '!()}{[]\'"“”`,,.…^+=/<>:;@#~|¬'])
+swap_strings = lambda x: x.replace('-', ' ').replace('_', ' ').replace('&amp', 'and').replace('&', 'and').replace('colour', 'color').replace('centre', 'center').replace('favourite', 'favorite').replace('theatre', 'theater').replace(' ?', '?').replace('* * * *', '****').replace('* * *', '***').replace('* *', '**').replace('\n', ' ').replace('  ', ' ')
+normalise = lambda x: swap_strings(remove_punctuation(remove_links(x.lower())))
 
 classify = lambda x: 'hate' if x == 2 else 'maybe hate' if x == 1 else 'not hate' if x == 0 else 'unclear/classification error'
 

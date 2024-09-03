@@ -1,4 +1,1 @@
-Birthdate: September 22
-Sex: Gender Male 
-Blood type: AB
-#info #bot
+birthdate september 22 sex gender male blood type ab info bot

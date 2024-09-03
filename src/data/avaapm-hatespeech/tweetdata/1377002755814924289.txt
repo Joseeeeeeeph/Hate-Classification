@@ -1,15 +1,1 @@
-#skin : the hide of an animal, separated from the body, whether green, dry, or tanned
-
-- French: peau
-
-- German: die Haut
-
-- Italian: pelle
-
-- Portuguese: pele
-
-- Spanish: piel
-
-------------
-
-Report an incorrect translation @ https://t.co/HULdZjtUvM
+skin the hide of an animal separated from the body whether green dry or tanned french peau german die haut italian pelle portuguese pele spanish piel report an incorrect translation 

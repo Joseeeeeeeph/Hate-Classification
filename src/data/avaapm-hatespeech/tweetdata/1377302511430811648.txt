@@ -1,10 +1,1 @@
-Italy#coronavirus March 31
-More new cases, less deaths, less ICU  
-
-*Total Infected 3,584,899
-*new cases 23,904 Lombardia +3943 Lazio+1,800) 
-*W/virus 562,508(-324 in 24 hrs)
-*Cured 2,913,045 (+23,744) 
-*Total dead 109,346 (+467  in 24 hrs) 
-*ICU 3,710 (-6)
-Ministry of Health
+italycoronavirus march 31 more new cases less deaths less icu *total infected 3584899 *new cases 23904 lombardia 3943 lazio1800 *wvirus 562508 324 in 24 hrs *cured 2913045 23744 *total dead 109346 467 in 24 hrs *icu 3710 6 ministry of health

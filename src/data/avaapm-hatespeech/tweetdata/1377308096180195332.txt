@@ -1,6 +1,1 @@
-COVID WAR
-USA       550000 DEATHS
-BRAZIL 318000 DEATHS
-INDIA    162000 DEATHS
-UK          127000 DEATHS
-ITLY        109000 DEATHS
+covid war usa 550000 deaths brazil 318000 deaths india 162000 deaths uk 127000 deaths itly 109000 deaths

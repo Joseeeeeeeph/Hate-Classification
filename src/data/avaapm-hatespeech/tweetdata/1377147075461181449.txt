@@ -1,6 +1,1 @@
-Birthday :  July 10
-Gender : Female
-Status : Deceased
-Height : 165 cm,1.65 m ,5.413 ft ,64.961 in
-WeightI: 47 kg,103.617 lb
-Blood type : B
+birthday july 10 gender female status deceased height 165 cm165 m 5413 ft 64961 in weighti 47 kg103617 lb blood type b

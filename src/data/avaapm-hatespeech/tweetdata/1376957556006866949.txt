@@ -1,15 +1,1 @@
-#pole : the stem of a small tree whose branches have been removed
-
-- French: pôle
-
-- German: die Stange
-
-- Italian: palo/asta
-
-- Portuguese: polo
-
-- Spanish: polo
-
-------------
-
-Fill in missing translations @ https://t.co/HULdZjtUvM
+pole the stem of a small tree whose branches have been removed french pôle german die stange italian paloasta portuguese polo spanish polo fill in missing translations 
