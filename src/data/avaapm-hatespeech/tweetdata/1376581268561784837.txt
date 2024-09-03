@@ -1,3 +1,1 @@
-Apparently in Gen 2, female Pokemon have a lower attack stat than males, due to their gender being determined by attack values in the code
-
-This usually makes male Pokemon more desirable, unless they're special attackers or if you want them to take less damage when confused
+apparently in gen 2 female pokemon have a lower attack stat than males due to their gender being determined by attack values in the code this usually makes male pokemon more desirable unless theyre special attackers or if you want them to take less damage when confused

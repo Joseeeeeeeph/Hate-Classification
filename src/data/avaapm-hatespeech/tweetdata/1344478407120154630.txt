@@ -1,9 +1,1 @@
-#nature : conformity to that which is natural, as distinguished from that which is artifical, or forced, or remote from actual experience
-
-- French: nature
-
-- German: die Natur
-
-- Italian: natura
-
-- Portuguese: natureza
+nature conformity to that which is natural as distinguished from that which is artifical or forced or remote from actual experience french nature german die natur italian natura portuguese natureza

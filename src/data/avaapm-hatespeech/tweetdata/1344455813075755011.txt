@@ -1,10 +1,1 @@
-"Reap What You Sow"
-Species: Scarecrow
-Gender: Male
-Attack: 410/600
-Defense: 200/600
-Speed: 520/600
-Luck: 200/600
-Stamina: 500/600
-
-Art by: @Screpdoodle https://t.co/GnAwCIdDzy
+reap what you sow species scarecrow gender male attack 410600 defense 200600 speed 520600 luck 200600 stamina 500600 art by screpdoodle

@@ -1,5 +1,1 @@
-All baseball fans out there, which player is better?
-
-Player A : .295 AVG, .415 OBP, .557 SLG, .972 OPS, 153 OPS+, 17% BB rate, 19 % SO rate, 9.8 WAR, .261 ISO
-
-Player B: .272 AVG, .390 OBP, .558 SLG, .948 OPS, 150 OPS+, 15.6% BB rate, 31.4% SO rate, 20.2 WAR, .286 ISO
+all baseball fans out there which player is better? player a 295 avg 415 obp 557 slg 972 ops 153 ops 17% bb rate 19 % so rate 98 war 261 iso player b 272 avg 390 obp 558 slg 948 ops 150 ops 156% bb rate 314% so rate 202 war 286 iso

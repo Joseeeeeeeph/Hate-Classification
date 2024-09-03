@@ -1,1 +1,1 @@
-NEW: Microsoft says SolarWinds hackers successfully viewed source code, accessed network, did not breach products/cloud or use its systems to attack other targets. https://t.co/U2iSsm47FS
+new microsoft says solarwinds hackers successfully viewed source code accessed network did not breach productscloud or use its systems to attack other targets

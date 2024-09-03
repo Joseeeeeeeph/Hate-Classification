@@ -1,10 +1,1 @@
-Italy#coronavirus Dec.31
-MORE new cases, less deaths, more ICU  
-
-*Total Infected 2,107,166
-*new cases 23,477 (Lombardia +3,859 Lazio+1,767) 
-*W/virus 569,896 (+55019 in 24 hrs)
-*Cured 1,463,111 (+17,421) 
-*Total dead 74,149 (+555 in 24 hrs) 
-*ICU 2555 (+27)
-Ministry of Health
+italycoronavirus dec31 more new cases less deaths more icu *total infected 2107166 *new cases 23477 lombardia 3859 lazio1767 *wvirus 569896 55019 in 24 hrs *cured 1463111 17421 *total dead 74149 555 in 24 hrs *icu 2555 27 ministry of health
