@@ -36,12 +36,12 @@ def store(hyperparameter, values):
     pkl_name = hyperparameter + '.pkl'
     iteration = 0
     cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '__pycache__')
-    if os.path.isfile(cache_path):
-        os.makedirs(cache_path)
+    if os.path.exists(cache_path):
+        os.mkdir(cache_path)
     file_path = os.path.join(cache_path, pkl_name)
 
     while True:
-        if os.path.isfile(file_path):
+        if os.path.exists(file_path):
             iteration += 1
             pkl_name = hyperparameter + f'{iteration}.pkl'
             file_path = os.path.join(cache_path, pkl_name)

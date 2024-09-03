@@ -1,6 +1,7 @@
 import os
 import torch
 import pandas as pd
+import pickle as pl
 from time import time
 from math import ceil
 from torch import nn
@@ -78,33 +79,54 @@ def build(data, path, train, test):
     
     return train_entries, test_entries
 
+def cache(path, *args):
+    try:
+        with open(path, 'wb') as file:
+            pl.dump(args, file)
+    except:
+        print(f'Could not cache data at {path}')
+
 vicomtech_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/Vicomtech-hate-speech-dataset')
 all_files_path = os.path.join(vicomtech_path, 'all_files')
-train_path = os.path.join(vicomtech_path, 'sampled_train')
-test_path = os.path.join(vicomtech_path, 'sampled_test')
 vicomtech_path_list = [os.path.join(all_files_path, f) for f in os.listdir(all_files_path)]
-vicomtech_train_list, vicomtech_test_list = holdout(vicomtech_path_list, all_files_path, train_path, test_path)
-vicomtech_data = pd.read_csv(os.path.join(vicomtech_path, 'annotations_metadata.csv'), usecols=['file_id', 'label']).values.tolist()
 
 avaapm_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/avaapm-hatespeech')
 tweets_path = os.path.join(avaapm_path, 'tweetdata')
 avaapm_path_list = [os.path.join(tweets_path, f) for f in os.listdir(tweets_path)]
-avaapm_id_list = [int(f[:-4]) for f in os.listdir(tweets_path)]
-avaapm_train_list, avaapm_test_list = holdout(avaapm_path_list, tweets_path, '', '')
-avaapm_csv = pd.read_csv(os.path.join(avaapm_path, 'label.csv'), usecols=['TweetID', 'LangID', 'HateLabel'])
-avaapm_csv_en = avaapm_csv[avaapm_csv['LangID'] == 1]
-filtered_csv_en = avaapm_csv_en[avaapm_csv_en['TweetID'].isin(avaapm_id_list)]
-avaapm_data = filtered_csv_en[['TweetID', 'HateLabel']].values.tolist()
 
-train_data = []
-test_data = []
+data_cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '__pycache__/data_cache.pkl')
 
-training_entries, testing_entries = build(vicomtech_data, all_files_path, vicomtech_train_list, vicomtech_test_list)
-train_data = train_data + training_entries
-test_data = test_data + testing_entries
-training_entries, testing_entries = build(avaapm_data, tweets_path, avaapm_train_list, avaapm_test_list)
-train_data = train_data + training_entries
-test_data = test_data + testing_entries
+if os.path.isfile(data_cache_path): 
+    with open(data_cache_path, 'rb') as file:
+        cached_data = pl.load(file)
+        train_data = cached_data[0]
+        test_data = cached_data[1]
+        
+else:
+    train_path = os.path.join(vicomtech_path, 'sampled_train')
+    test_path = os.path.join(vicomtech_path, 'sampled_test')
+    vicomtech_train_list, vicomtech_test_list = holdout(vicomtech_path_list, all_files_path, train_path, test_path)
+    vicomtech_data = pd.read_csv(os.path.join(vicomtech_path, 'annotations_metadata.csv'), usecols=['file_id', 'label']).values.tolist()
+
+    avaapm_id_list = [int(f[:-4]) for f in os.listdir(tweets_path)]
+    avaapm_train_list, avaapm_test_list = holdout(avaapm_path_list, tweets_path, '', '')
+    avaapm_csv = pd.read_csv(os.path.join(avaapm_path, 'label.csv'), usecols=['TweetID', 'LangID', 'HateLabel'])
+    avaapm_csv_en = avaapm_csv[avaapm_csv['LangID'] == 1]
+    filtered_csv_en = avaapm_csv_en[avaapm_csv_en['TweetID'].isin(avaapm_id_list)]
+    avaapm_data = filtered_csv_en[['TweetID', 'HateLabel']].values.tolist()
+
+    train_data = []
+    test_data = []
+
+    training_entries, testing_entries = build(vicomtech_data, all_files_path, vicomtech_train_list, vicomtech_test_list)
+    train_data += training_entries
+    test_data += testing_entries
+
+    training_entries, testing_entries = build(avaapm_data, tweets_path, avaapm_train_list, avaapm_test_list)
+    train_data += training_entries
+    test_data += testing_entries
+
+    cache(data_cache_path, train_data, test_data)
 
 training_dataset = HateSpeechDataset(train_data)
 testing_dataset = HateSpeechDataset(test_data)

@@ -32,12 +32,25 @@ normalise = lambda x: swap_strings(remove_emojis(remove_punctuation(remove_links
 
 def normalise_files(files, directory):
     for file in files:
-        with open(file, mode='r') as fin:
-            contents = fin.read()
-            fin.close()
-        with open(file, mode='w') as fout:
-            fout.write(normalise(contents))
-            fout.close()
+        try:
+            try:
+                with open(file, mode='r') as fin:
+                    contents = fin.read()
+                    fin.close()
+            except:
+                with open(file, mode='r', encoding='utf-8') as fin:
+                    contents = fin.read()
+                    fin.close()
+            try:
+                with open(file, mode='w') as fout:
+                    fout.write(normalise(contents))
+                    fout.close()
+            except:
+                with open(file, mode='w', encoding='utf-8') as fout:
+                    fout.write(normalise(contents))
+                    fout.close()
+        except:
+            print(f'Could not normalise {file}')
 
     print(f'Normalisation of source files complete for {directory}')
 
