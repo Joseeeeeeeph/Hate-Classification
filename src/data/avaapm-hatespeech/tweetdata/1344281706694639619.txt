@@ -1,1 +1,1 @@
-WPC-DMD: Hot Shot Basketball (Redemption game), the active ROM bank is 16, running since 259 seconds, the active display page is 5, the active display scanline is 21, PC register value is 0xf6d9. #Pinball https://t.co/adZ0Od9gij
+wpc dmd hot shot basketball redemption game the active rom bank is 16 running since 259 seconds the active display page is 5 the active display scanline is 21 pc register value is 0xf6d9 pinball

@@ -1,5 +1,1 @@
-HT: #PremierLeague #EPL
-#MUFC 0 (0.80 xG) 
-#Wolves 0 (0.35 xG)
-
-#MUNWOL shot map ➡️ https://t.co/VgNXzQcQxL https://t.co/1rSABcLyNL
+ht premierleague epl mufc 0 080 xg wolves 0 035 xg munwol shot map 

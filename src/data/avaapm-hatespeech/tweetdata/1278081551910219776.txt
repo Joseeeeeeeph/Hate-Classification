@@ -1,7 +1,1 @@
-CNN: “Vice President Biden, what’s your favorite flavor of Ice Cream”
-
-Joe Biden: “I wrote the damn bill”
-
-CNN: “uh.. That’s.. I mean, Fantastic Answer, Sir. Mine too”
-
-Joe Biden: “Whoops, my answer cards got mixed up. That’s for the next question. I meant to say Chocolate.”
+cnn vice president biden what’s your favorite flavor of ice cream joe biden i wrote the damn bill cnn uh that’s i mean fantastic answer sir mine too joe biden whoops my answer cards got mixed up that’s for the next question i meant to say chocolate
