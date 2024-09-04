@@ -67,7 +67,7 @@ def hyperparameter_tuning(hyperparameter, controls, write=False):
 #       step := how many values inbetween
 #    write := whether to store the results in a .pkl file
 
-    global best_accuracy, best_val
+    global best_accuracy, best_val, scale
     all_scores = []
 
     start, end, step = controls

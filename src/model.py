@@ -34,26 +34,41 @@ class HateSpeechDataset(Dataset):
     def __len__(self):
         return len(self.contents)
     
-def holdout(data_list, all_path, train_path, test_path):
+def holdout(data_list, all_path, train=None, test=None):
     head = len(all_path) + 1
     tail = -len('.txt')
 
-    try:
-        training = [f[:tail] for f in os.listdir(train_path)]
-    except:
+    if train:
+        training = [f[:tail] for f in os.listdir(train)]
+    else:
         training = []
-    try:
-        testing = [f[:tail] for f in os.listdir(test_path)]
-    except:
+    if test:
+        testing = [f[:tail] for f in os.listdir(test)]
+    else:
         testing = []
 
     remaining = [f[head:tail] for f in data_list if f[head:tail] not in training and f[head:tail] not in testing]
     shuffle(remaining)
-    partition = int(ceil(0.7 * len(remaining)))
+    partition = int(ceil(0.8 * len(remaining)))
     training = training + remaining[:partition]
     testing = testing + remaining[partition:]
     
     return training, testing
+
+def get_class(annotations):
+    score = 0
+    for a in annotations:
+        if a['label'] == 'hatespeech':
+            score += 2
+        elif a['label'] == 'offensive':
+            score += 1
+        elif a['label'] == 'normal':
+            pass
+        else:
+            print('Unknown label:', a['label'])
+            exit(1)
+
+    return 2 if score >= 5 else 1 if score >= 2 else 0
 
 def build(data, path, train, test):
     train_entries = []
@@ -109,6 +124,10 @@ ucberkeley_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dat
 ucberkeley_all_path = os.path.join(ucberkeley_path, 'all_files')
 ucberkeley_path_list = [os.path.join(ucberkeley_all_path, f) for f in os.listdir(ucberkeley_all_path)]
 
+hatexplain_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/hate-alert-HateXplain')
+hatexplain_all_path = os.path.join(hatexplain_path, 'all_files')
+hatexplain_path_list = [os.path.join(hatexplain_all_path, f) for f in os.listdir(hatexplain_all_path)]
+
 data_cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/data.pkl')
 
 if os.path.isfile(data_cache_path): 
@@ -120,18 +139,24 @@ if os.path.isfile(data_cache_path):
 else:
     train_path = os.path.join(vicomtech_path, 'sampled_train')
     test_path = os.path.join(vicomtech_path, 'sampled_test')
-    vicomtech_train_list, vicomtech_test_list = holdout(vicomtech_path_list, vicomtech_all_path, train_path, test_path)
+    vicomtech_train_list, vicomtech_test_list = holdout(vicomtech_path_list, vicomtech_all_path, train=train_path, test=test_path)
     vicomtech_data = pd.read_csv(os.path.join(vicomtech_path, 'annotations_metadata.csv'), usecols=['file_id', 'label']).values.tolist()
 
     avaapm_id_list = [int(f[:-4]) for f in os.listdir(tweets_path)]
-    avaapm_train_list, avaapm_test_list = holdout(avaapm_path_list, tweets_path, '', '')
+    avaapm_train_list, avaapm_test_list = holdout(avaapm_path_list, tweets_path)
     avaapm_csv = pd.read_csv(os.path.join(avaapm_path, 'label.csv'), usecols=['TweetID', 'LangID', 'HateLabel'])
     avaapm_csv_en = avaapm_csv[avaapm_csv['LangID'] == 1]
     filtered_csv_en = avaapm_csv_en[avaapm_csv_en['TweetID'].isin(avaapm_id_list)]
     avaapm_data = filtered_csv_en[['TweetID', 'HateLabel']].values.tolist()
 
-    ucberkeley_train_list, ucberkeley_test_list = holdout(ucberkeley_path_list, ucberkeley_all_path, '', '')
+    ucberkeley_train_list, ucberkeley_test_list = holdout(ucberkeley_path_list, ucberkeley_all_path)
     ucberkeley_data = pd.read_csv(os.path.join(ucberkeley_path, 'label.csv'), usecols=['id', 'hate_speech_score']).values.tolist()
+
+    hatexplain_train_list, hatexplain_test_list = holdout(hatexplain_path_list, hatexplain_all_path)
+    hatexplain_df = pd.read_json(os.path.join(hatexplain_path, 'dataset.json')).T
+    hatexplain_df = hatexplain_df[['post_id', 'annotators']]
+    hatexplain_df['annotators'] = hatexplain_df['annotators'].apply(get_class)
+    hatexplain_data = hatexplain_df.values.tolist()
 
     train_data = []
     test_data = []
@@ -145,6 +170,10 @@ else:
     test_data += testing_entries
 
     training_entries, testing_entries = build(ucberkeley_data, ucberkeley_all_path, ucberkeley_train_list, ucberkeley_test_list)
+    train_data += training_entries
+    test_data += testing_entries
+
+    training_entries, testing_entries = build(hatexplain_data, hatexplain_all_path, hatexplain_train_list, hatexplain_test_list)
     train_data += training_entries
     test_data += testing_entries
 
