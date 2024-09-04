@@ -1,8 +1,9 @@
 import os
 import torch
+from torch.utils.data import DataLoader
 import pickle as pl
 
-from model import ClassifierNN, training_dataloader, validation_dataloader, testing_dataloader, device, vocab_size, emsize
+from model import ClassifierNN, device, vocab_size, emsize, collate_batch, train_split, valid_split, testing_dataset
 
 class ptr():
     def __init__(self, id, value): 
@@ -19,15 +20,17 @@ class ModifiedNN(ClassifierNN):
         self.dropout = torch.nn.Dropout(dropout)
 
 # Hyperparameters:
+batch_size = ptr('Batch Size', 64)
 lr = ptr('LR', 2)
-epochs = ptr('Epochs', 16)
+epochs = ptr('Epochs', 32)
 weight_decay = ptr('Weight Decay', 0.0001)
 dropout = ptr('Dropout', 0.3)
 patience = ptr('Patience', 4)
 
 def reset():
+    batch_size.set(64)
     lr.set(2)
-    epochs.set(16)
+    epochs.set(32)
     weight_decay.set(0.0001)
     dropout.set(0.3)
     patience.set(4)
@@ -79,6 +82,10 @@ def hyperparameter_tuning(hyperparameter, controls, write=False):
 
     for i in range(start, end, step):
         hyperparameter.set(round(float(i * scale), display_digits))
+
+        training_dataloader = DataLoader(train_split, batch_size=batch_size.get(), shuffle=True, collate_fn=collate_batch)
+        validation_dataloader = DataLoader(valid_split, batch_size=batch_size.get(), shuffle=True, collate_fn=collate_batch)
+        testing_dataloader = DataLoader(testing_dataset, batch_size=batch_size.get(), shuffle=True, collate_fn=collate_batch)
 
         total_accuracy = None
         model = ModifiedNN(vocab_size, emsize, classes, dropout.get()).to(device)
@@ -151,11 +158,12 @@ def hyperparameter_tuning(hyperparameter, controls, write=False):
     reset()
 
 # >>>
-hyperparameter_tuning(lr, (0.1, 6, 0.1), write=True)
-hyperparameter_tuning(weight_decay, (0, 0.01, 0.0001), write=True)
-hyperparameter_tuning(weight_decay, (0, 0.1, 0.001), write=True)
+hyperparameter_tuning(batch_size, (16, 256, 16), write=True)
+hyperparameter_tuning(lr, (0.1, 10, 0.1), write=True)
+hyperparameter_tuning(weight_decay, (0, 0.001, 0.0001), write=True)
+hyperparameter_tuning(weight_decay, (0, 0.1, 0.01), write=True)
 hyperparameter_tuning(weight_decay, (0, 1, 0.1), write=True)
-hyperparameter_tuning(dropout, (0, 0.8, 0.1), write=True)
+hyperparameter_tuning(dropout, (0, 0.5, 0.01), write=True)
 hyperparameter_tuning(patience, (2, 10, 1), write=True)
 
 print(f'\nBest hyperparameters:\n {best_value_list}')

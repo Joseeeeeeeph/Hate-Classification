@@ -55,7 +55,10 @@ tweetdata_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 tweetdata_path_list = [os.path.join(tweetdata_path, f) for f in os.listdir(tweetdata_path)]
 ucberkeley_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/UCBerkeley-DLab-measuring-hate-speech/all_files')
 ucberkeley_path_list = [os.path.join(ucberkeley_path, f) for f in os.listdir(ucberkeley_path)]
+hatexplain_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/hate-alert-HateXplain/all_files')
+hatexplain_path_list = [os.path.join(hatexplain_path, f) for f in os.listdir(hatexplain_path)]
 
 normalise_files(vicomtech_path_list, vicomtech_path)
 normalise_files(tweetdata_path_list, tweetdata_path)
 normalise_files(ucberkeley_path_list, ucberkeley_path)
+normalise_files(hatexplain_path_list, hatexplain_path)
