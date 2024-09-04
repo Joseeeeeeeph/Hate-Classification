@@ -1,0 +1,1 @@
+look for a partition on your drive something like this is the issue i guess
