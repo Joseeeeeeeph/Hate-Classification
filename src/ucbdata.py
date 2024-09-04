@@ -12,7 +12,7 @@ ucb_data = ucb_df[['id', 'text']].values.tolist()
 ucb_df[['id', 'hate_speech_score', 'text']].to_csv(os.path.join(ucb_path, 'label.csv'), index=False)
 
 for entry in ucb_data:
-    file = open(os.path.join(ucb_text_path, f'{entry[0]:06d}.txt'), 'w')
+    file = open(os.path.join(ucb_text_path, entry[0] + '.txt'), 'w')
     file.write(entry[1])
     file.close()
 

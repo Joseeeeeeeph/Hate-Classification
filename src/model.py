@@ -13,12 +13,12 @@ from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
 
 # Hyperparameters:
-EPOCHS = 16
+EPOCHS = 18
 LR = 2
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 WEIGHT_DECAY = 0.0001
 DROP_OUT = 0.3
-PATIENCE = 5
+PATIENCE = 4
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
 
@@ -48,6 +48,7 @@ def holdout(data_list, all_path, train_path, test_path):
         testing = []
 
     remaining = [f[head:tail] for f in data_list if f[head:tail] not in training and f[head:tail] not in testing]
+    shuffle(remaining)
     partition = int(ceil(0.7 * len(remaining)))
     training = training + remaining[:partition]
     testing = testing + remaining[partition:]
@@ -57,14 +58,21 @@ def holdout(data_list, all_path, train_path, test_path):
 def build(data, path, train, test):
     train_entries = []
     test_entries = []
-    numericise_labels = lambda l: 2 if l == 'hate' else 1 if l == 'relation' else 0 if l == 'noHate' else l
     dir = os.listdir(path)
+
+    numericise_labels = lambda l: 2 if l == 'hate' else 1 if l == 'relation' else 0 if l == 'noHate' else l
+    standardise_labels = lambda l: 2 if l >= 1.0 else 1 if l >= 0.5 else 0
 
     for entry in data:
         id = str(entry[0])
         file = f'{id}.txt'
+
         entry[1] = numericise_labels(entry[1])
-        if file not in dir: continue
+        if type(entry[1]) == float: entry[1] = standardise_labels(entry[1])
+
+        if file not in dir:
+            id = f'{int(entry[0]):06d}'
+            file = f'{id}.txt'
         contents = open(os.path.join(path, file), mode='r', encoding='utf-8').read()
         entry.append(contents)
 
@@ -87,12 +95,16 @@ def cache(path, *args):
         print(f'Could not cache data at {path}')
 
 vicomtech_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/Vicomtech-hate-speech-dataset')
-all_files_path = os.path.join(vicomtech_path, 'all_files')
-vicomtech_path_list = [os.path.join(all_files_path, f) for f in os.listdir(all_files_path)]
+vicomtech_all_path = os.path.join(vicomtech_path, 'all_files')
+vicomtech_path_list = [os.path.join(vicomtech_all_path, f) for f in os.listdir(vicomtech_all_path)]
 
 avaapm_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/avaapm-hatespeech')
 tweets_path = os.path.join(avaapm_path, 'tweetdata')
 avaapm_path_list = [os.path.join(tweets_path, f) for f in os.listdir(tweets_path)]
+
+ucberkeley_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/UCBerkeley-DLab-measuring-hate-speech')
+ucberkeley_all_path = os.path.join(ucberkeley_path, 'all_files')
+ucberkeley_path_list = [os.path.join(ucberkeley_all_path, f) for f in os.listdir(ucberkeley_all_path)]
 
 data_cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/data.pkl')
 
@@ -105,7 +117,7 @@ if os.path.isfile(data_cache_path):
 else:
     train_path = os.path.join(vicomtech_path, 'sampled_train')
     test_path = os.path.join(vicomtech_path, 'sampled_test')
-    vicomtech_train_list, vicomtech_test_list = holdout(vicomtech_path_list, all_files_path, train_path, test_path)
+    vicomtech_train_list, vicomtech_test_list = holdout(vicomtech_path_list, vicomtech_all_path, train_path, test_path)
     vicomtech_data = pd.read_csv(os.path.join(vicomtech_path, 'annotations_metadata.csv'), usecols=['file_id', 'label']).values.tolist()
 
     avaapm_id_list = [int(f[:-4]) for f in os.listdir(tweets_path)]
@@ -115,14 +127,21 @@ else:
     filtered_csv_en = avaapm_csv_en[avaapm_csv_en['TweetID'].isin(avaapm_id_list)]
     avaapm_data = filtered_csv_en[['TweetID', 'HateLabel']].values.tolist()
 
+    ucberkeley_train_list, ucberkeley_test_list = holdout(ucberkeley_path_list, ucberkeley_all_path, '', '')
+    ucberkeley_data = pd.read_csv(os.path.join(ucberkeley_path, 'label.csv'), usecols=['id', 'hate_speech_score']).values.tolist()
+
     train_data = []
     test_data = []
 
-    training_entries, testing_entries = build(vicomtech_data, all_files_path, vicomtech_train_list, vicomtech_test_list)
+    training_entries, testing_entries = build(vicomtech_data, vicomtech_all_path, vicomtech_train_list, vicomtech_test_list)
     train_data += training_entries
     test_data += testing_entries
 
     training_entries, testing_entries = build(avaapm_data, tweets_path, avaapm_train_list, avaapm_test_list)
+    train_data += training_entries
+    test_data += testing_entries
+
+    training_entries, testing_entries = build(ucberkeley_data, ucberkeley_all_path, ucberkeley_train_list, ucberkeley_test_list)
     train_data += training_entries
     test_data += testing_entries
 
@@ -134,7 +153,7 @@ n = int(len(training_dataset) * 0.95)
 train_split, valid_split = random_split(training_dataset, [n, len(training_dataset) - n])
 
 tokenizer = Tokenizer(BPE())
-tokenizer_path_list = vicomtech_path_list + avaapm_path_list
+tokenizer_path_list = vicomtech_path_list + avaapm_path_list + ucberkeley_path_list
 shuffle(tokenizer_path_list)
 tokenizer.train(tokenizer_path_list, trainer=BpeTrainer(special_tokens=["[UNK]", "[PAD]", "[CLS]", "[SEP]", "[MASK]"]))
 text_pipeline = lambda x: tokenizer.encode(x).ids
