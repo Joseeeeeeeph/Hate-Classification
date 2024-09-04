@@ -1,0 +1,1 @@
+mscorsvw one of the more retarded features of windows launched after updating net to rebuild optimize assemblies ms offloads cpu time and energy costs onto consumers because unique system configurations imply they can not ship pre built assemblies true yes hurts performance yes
