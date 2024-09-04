@@ -66,13 +66,13 @@ def build(data, path, train, test):
     for entry in data:
         id = str(entry[0])
         file = f'{id}.txt'
+        if file not in dir:
+            id = f'{int(entry[0]):06d}'
+            file = f'{id}.txt'
 
         entry[1] = numericise_labels(entry[1])
         if type(entry[1]) == float: entry[1] = standardise_labels(entry[1])
 
-        if file not in dir:
-            id = f'{int(entry[0]):06d}'
-            file = f'{id}.txt'
         contents = open(os.path.join(path, file), mode='r', encoding='utf-8').read()
         entry.append(contents)
 
