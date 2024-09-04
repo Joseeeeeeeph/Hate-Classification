@@ -63,7 +63,7 @@ def build(data, path, train, test):
     numericise_labels = lambda l: 2 if l == 'hate' else 1 if l == 'relation' else 0 if l == 'noHate' else l
     standardise_labels = lambda l: 2 if l >= 1.0 else 1 if l >= 0.5 else 0
 
-    for entry in data:
+    for entry in data: 
         id = str(entry[0])
         file = f'{id}.txt'
         if file not in dir:
@@ -73,7 +73,10 @@ def build(data, path, train, test):
         entry[1] = numericise_labels(entry[1])
         if type(entry[1]) == float: entry[1] = standardise_labels(entry[1])
 
-        contents = open(os.path.join(path, file), mode='r', encoding='utf-8').read()
+        try:
+            contents = open(os.path.join(path, file), mode='r').read()
+        except:
+            contents = open(os.path.join(path, file), mode='r', encoding='utf-8').read()
         entry.append(contents)
 
         if entry[1] == 'idk/skip':
@@ -113,7 +116,7 @@ if os.path.isfile(data_cache_path):
         cached_data = pl.load(file)
         train_data = cached_data[0]
         test_data = cached_data[1]
-        
+
 else:
     train_path = os.path.join(vicomtech_path, 'sampled_train')
     test_path = os.path.join(vicomtech_path, 'sampled_test')
