@@ -3,6 +3,17 @@ import requests
 import datasets
 import pandas as pd
 
+def write_unique_files(data, path, used):
+    for entry in data:
+        contents = entry[1]
+        if contents in used: 
+            continue
+        else:
+            file = open(os.path.join(path, entry[0] + '.txt'), 'w')
+            file.write(contents)
+            file.close()
+            used.append(contents)
+
 def build_avaapm():
     dataset_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/avaapm-hatespeech')
     storage_path = os.path.join(dataset_path, 'tweetdata')
@@ -33,22 +44,13 @@ def build_ucb():
     if not os.path.exists(ucb_text_path): os.mkdir(ucb_text_path)
 
     ucb_df = datasets.load_dataset('ucberkeley-dlab/measuring-hate-speech')['train'].to_pandas()
-    ucb_df['id'] = ['{:06d}'.format(int(i)) for i in ucb_df.index]
+    ucb_df['id'] = [f'{int(i):06d}' for i in ucb_df.index]
     ucb_df = ucb_df[['id', 'hate_speech_score', 'text']].drop_duplicates(subset='text')
     ucb_data = ucb_df[['id', 'text']].values.tolist()
     ucb_df.to_csv(os.path.join(ucb_path, 'label.csv'), index=False)
 
     previous = []
-
-    for entry in ucb_data:
-        contents = entry[1]
-        if contents in previous: 
-            continue
-        else:
-            file = open(os.path.join(ucb_text_path, entry[0] + '.txt'), 'w')
-            file.write(contents)
-            file.close()
-            previous.append(contents)
+    write_unique_files(ucb_data, ucb_text_path, previous)
 
     print(f'UCBerkeley-DLab-measuring-hate-speech contents stored in {ucb_text_path}')
 
@@ -65,6 +67,18 @@ def build_hatexplain():
         file = open(os.path.join(hatexplain_text_path, entry[0] + '.txt'), 'w')
         file.write(entry[1])
         file.close()
+
+def build_tdavidson():
+    tdavidson_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/t-davidson-hate-speech-and-offensive-language')
+    tdavidson_text_path = os.path.join(tdavidson_path, 'all_files')
+    if not os.path.exists(tdavidson_text_path): os.mkdir(tdavidson_text_path)
+    tdavidson_df = pd.read_csv(os.path.join(tdavidson_path, 'label.csv'))
+    tdavidson_df['id'] = [f'{int(i):06d}' for i in tdavidson_df.index]
+    tdavidson_df = tdavidson_df[['id', 'tweet']].drop_duplicates(subset='tweet')
+    tdavidson_data = tdavidson_df.values.tolist()
+
+    previous = []
+    write_unique_files(tdavidson_data, tdavidson_text_path, previous)
 
 def remove_duplicates(path):
     previous = []
@@ -83,5 +97,6 @@ def remove_duplicates(path):
 build_avaapm()
 build_ucb()
 build_hatexplain()
+build_tdavidson()
 
-remove_duplicates(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/Vicomtech-hate-speech-dataset/all_files'))
+remove_duplicates(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/t-davidson-hate-speech-and-offensive-language/all_files'))

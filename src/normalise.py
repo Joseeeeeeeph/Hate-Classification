@@ -1,6 +1,18 @@
 import os
 import re
 
+def remove_codes(s):
+    words = s.replace('&#', '[#]{#}').replace(';', '[#]').split('[#]')
+    new_words = [s for s in words if s[:len(r'{x}')] != r'{x}']
+    return ' '.join(new_words)
+
+def remove_rt(s):
+    words = s.split()
+    if words[0] == 'rt':
+        return ' '.join(words[1:])
+    else:
+        return s
+
 emoji_pattern = re.compile(
     "["
     "\U0001F600-\U0001F64F"  # Emoticons
@@ -20,10 +32,11 @@ emoji_pattern = re.compile(
 
 remove_links = lambda x: ' '.join([s for s in x.split() if 'http' not in s])
 remove_punctuation = lambda x: ''.join([c for c in x if c not in r'!?()}{[]\'"“”`,,.…^+=/:;@#~|%¬\\£$€¥¢'])
-swap_strings = lambda x: x.replace('-', ' ').replace('_', ' ').replace('&amp', 'and').replace('&', 'and').replace('colour', 'color').replace('centre', 'center').replace('favourite', 'favorite').replace('theatre', 'theater').replace('* * * *', '****').replace('* * *', '***').replace('* *', '**').replace('\n', ' ').replace('<user>', '').replace('<url>', '').replace('<censored>', '****').replace('<', '').replace('>', '').replace('  ', ' ')
+pre_swap = lambda x: remove_codes(x).replace(' RT ', '')
+swap_strings = lambda x: remove_rt(x).replace('-', ' ').replace('_', ' ').replace('&amp', 'and').replace('&', 'and').replace('colour', 'color').replace('centre', 'center').replace('favourite', 'favorite').replace('theatre', 'theater').replace('* * * *', '****').replace('* * *', '***').replace('* *', '**').replace('\n', ' ').replace('<user>', '').replace('<url>', '').replace('<censored>', '****').replace('<', '').replace('>', '').replace('  ', ' ')
 remove_emojis = lambda x: emoji_pattern.sub(r'', x)
 
-normalise = lambda x: swap_strings(remove_emojis(remove_punctuation(remove_links(x.lower()))))
+normalise = lambda x: swap_strings(remove_emojis(remove_punctuation(remove_links(pre_swap(x).lower()))))
 
 def normalise_files(files, directory):
     for file in files:
@@ -49,9 +62,12 @@ ucberkeley_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dat
 ucberkeley_path_list = [os.path.join(ucberkeley_path, f) for f in os.listdir(ucberkeley_path)]
 hatexplain_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/hate-alert-HateXplain/all_files')
 hatexplain_path_list = [os.path.join(hatexplain_path, f) for f in os.listdir(hatexplain_path)]
+tdavidson_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/t-davidson-hate-speech-and-offensive-language/all_files')
+tdavidson_path_list = [os.path.join(tdavidson_path, f) for f in os.listdir(tdavidson_path)]
 
 # >>>
 normalise_files(vicomtech_path_list, vicomtech_path)
 normalise_files(tweetdata_path_list, tweetdata_path)
 normalise_files(ucberkeley_path_list, ucberkeley_path)
 normalise_files(hatexplain_path_list, hatexplain_path)
+normalise_files(tdavidson_path_list, tdavidson_path)
