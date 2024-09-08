@@ -1,7 +1,7 @@
 import model
 
 remove_links = lambda x: ' '.join([s for s in x.split() if 'http' not in s])
-remove_punctuation = lambda x: ''.join([c for c in x if c not in '!?()}{[]\'"“”`,,.…^+=/<>:;@#~|¬'])
+remove_punctuation = lambda x: ''.join([c for c in x if c not in r'!?()}{[]\'"“”`,,.…^+=/:;@#~|%¬\\£$€¥¢'])
 swap_strings = lambda x: x.replace('-', ' ').replace('_', ' ').replace('&amp', 'and').replace('&', 'and').replace('colour', 'color').replace('centre', 'center').replace('favourite', 'favorite').replace('theatre', 'theater').replace('* * * *', '****').replace('* * *', '***').replace('* *', '**').replace('\n', ' ').replace('<user>', '').replace('<url>', '').replace('<censored>', '****').replace('<', '').replace('>', '').replace('  ', ' ')
 normalise = lambda x: swap_strings(remove_punctuation(remove_links(x.lower())))
 

@@ -5,19 +5,21 @@ import pickle as pl
 from time import time
 from math import ceil
 from torch import nn
+from torch.amp import autocast, GradScaler
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.dataset import random_split
-from random import shuffle
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
+from random import shuffle
+from tokenizers.pre_tokenizers import Whitespace
 
 # Hyperparameters:
 EPOCHS = 18
 LR = 2
 BATCH_SIZE = 64
 WEIGHT_DECAY = 0.0001
-DROP_OUT = 0.3
+DROP_OUT = 0.01
 PATIENCE = 4
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
@@ -39,11 +41,11 @@ def holdout(data_list, all_path, train=None, test=None):
     tail = -len('.txt')
 
     if train:
-        training = [f[:tail] for f in os.listdir(train)]
+        training = [f[:tail] for f in os.listdir(train) if f in os.listdir(all_path)]
     else:
         training = []
     if test:
-        testing = [f[:tail] for f in os.listdir(test)]
+        testing = [f[:tail] for f in os.listdir(test) if f in os.listdir(all_path)]
     else:
         testing = []
 
@@ -70,6 +72,13 @@ def get_class(annotations):
 
     return 2 if score >= 5 else 1 if score >= 2 else 0
 
+def can_int(x):
+    try:
+        int(x)
+        return True
+    except ValueError:
+        return False
+
 def build(data, path, train, test):
     train_entries = []
     test_entries = []
@@ -82,24 +91,36 @@ def build(data, path, train, test):
         id = str(entry[0])
         file = f'{id}.txt'
         if file not in dir:
-            id = f'{int(entry[0]):06d}'
-            file = f'{id}.txt'
+            if can_int(entry[0]):
+                id = f'{int(entry[0]):06d}'
+                file = f'{id}.txt'
+                if file not in dir:
+                    continue
+            else:
+                continue
 
         entry[1] = numericise_labels(entry[1])
         if type(entry[1]) == float: entry[1] = standardise_labels(entry[1])
 
-        try:
-            contents = open(os.path.join(path, file), mode='r').read()
-        except:
-            contents = open(os.path.join(path, file), mode='r', encoding='utf-8').read()
+        contents = open(os.path.join(path, file), mode='r', encoding='utf-8').read()
         entry.append(contents)
 
         if entry[1] == 'idk/skip':
             continue
         elif id in train:
-            train_entries.append(tuple(entry[1:]))
+            datum = tuple(entry[1:])
+            if datum in train_entries:
+                print('Duplicate entry:', datum)
+                continue
+            else:
+                train_entries.append(datum)
         elif id in test:
-            test_entries.append(tuple(entry[1:]))
+            datum = tuple(entry[1:])
+            if datum in test_entries:
+                print('Duplicate entry:', datum)
+                continue
+            else:
+                test_entries.append(datum)
         else:
             print('Could not allocate:', id)
     
@@ -184,10 +205,17 @@ testing_dataset = HateSpeechDataset(test_data)
 n = int(len(training_dataset) * 0.95)
 train_split, valid_split = random_split(training_dataset, [n, len(training_dataset) - n])
 
-tokenizer = Tokenizer(BPE())
-tokenizer_path_list = vicomtech_path_list + avaapm_path_list + ucberkeley_path_list
-shuffle(tokenizer_path_list)
-tokenizer.train(tokenizer_path_list, trainer=BpeTrainer(special_tokens=["[UNK]", "[PAD]", "[CLS]", "[SEP]", "[MASK]"]))
+tokenizer_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tokenizer.json')
+if os.path.isfile(tokenizer_path):
+    tokenizer = Tokenizer.from_file(tokenizer_path)
+else:
+    tokenizer = Tokenizer(BPE())
+    tokenizer.pre_tokenizer = Whitespace()
+    tokenizer_path_list = vicomtech_path_list + avaapm_path_list + ucberkeley_path_list + hatexplain_path_list
+    shuffle(tokenizer_path_list)
+    tokenizer.train(tokenizer_path_list, trainer=BpeTrainer(special_tokens=["[UNK]", "[PAD]", "[CLS]", "[SEP]", "[MASK]"]))
+    tokenizer.save(tokenizer_path)
+
 text_pipeline = lambda x: tokenizer.encode(x).ids
 
 def collate_batch(batch):
@@ -212,17 +240,21 @@ class ClassifierNN(nn.Module):
         self.embedding = nn.EmbeddingBag(vocab_size, embed_dim, sparse=False)
         self.fc = nn.Linear(embed_dim, num_class)
         self.dropout = nn.Dropout(DROP_OUT)
+        self.batch_norm = nn.BatchNorm1d(embed_dim)
+        self.activation = nn.ReLU()
         self.init_weights()
 
     def init_weights(self):
-        initrange = 0.5
-        self.embedding.weight.data.uniform_(-initrange, initrange)
-        self.fc.weight.data.uniform_(-initrange, initrange)
+        nn.init.xavier_uniform_(self.embedding.weight)
+        nn.init.xavier_uniform_(self.fc.weight)
         self.fc.bias.data.zero_()
 
     def forward(self, text, offsets):
         embedded = self.embedding(text, offsets)
-        return self.fc(embedded)
+        embedded = self.batch_norm(embedded)
+        embedded = self.dropout(embedded)
+        output = self.fc(embedded)
+        return self.activation(output)
 
 vocab_size = tokenizer.get_vocab_size()
 emsize = 64
@@ -230,9 +262,10 @@ total_accuracy = None
 
 model = ClassifierNN(vocab_size, emsize, training_dataset.nClasses).to(device)
 model_path = os.path.join(os.path.dirname(os.path.realpath(os.path.dirname(__file__))), 'model.pth')
-criterion = torch.nn.CrossEntropyLoss()
+criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.1)
+scaler = GradScaler()
 
 def train(dataloader):
     model.train()
@@ -241,15 +274,18 @@ def train(dataloader):
 
     for id, (label, text, offsets) in enumerate(dataloader):
         optimizer.zero_grad()
-        predicted_label = model(text, offsets)
-        loss = criterion(predicted_label, label)
-        loss.backward()
+        with autocast(device_type=device.type):
+            predicted_label = model(text, offsets)
+            loss = criterion(predicted_label, label)
+        scaler.scale(loss).backward()
+        scaler.unscale_(optimizer)
         torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
-        optimizer.step()
+        scaler.step(optimizer)
+        scaler.update()
         total_acc += (predicted_label.argmax(1) == label).sum().item()
         total_count += label.size(0)
         if id % log_interval == 0 and id > 0:
-            print('epoch {:3d} | {:5d}/{:5d} batches | accuracy {:8.3f}'.format(epoch, id, len(dataloader), total_acc / total_count))
+            print(f'epoch {epoch:3d} | {id:5d}/{len(dataloader):5d} batches | accuracy: {total_acc / total_count:8.3f}')
             total_acc, total_count = 0, 0
 
 def evaluate(dataloader):
@@ -281,18 +317,16 @@ for epoch in range(1, EPOCHS + 1):
         scheduler.step()
     else:
         total_accuracy = validation_accuracy
-    print('end of epoch {:3d} | time: {:5.2f}s | accuracy {:8.3f}'.format(epoch, time() - epoch_start_time, validation_accuracy))
+    print(f'end of epoch {epoch:3d} | time: {time() - epoch_start_time:5.2f}s | accuracy: {validation_accuracy:8.3f}')
 
     if val_loss < best_loss:
         best_loss = val_loss
         patience_counter = 0
-        torch.save(model.state_dict(), model_path)
     else:
         patience_counter += 1
     if patience_counter >= PATIENCE:
         print('early stopping.')
         break
-
 
 def minutes(t):
     mins = int(t // 60)
@@ -306,10 +340,15 @@ print("training finished in" + minutes(time() - start_time) + "\n\nChecking the 
 test_accuracy = evaluate(testing_dataloader)
 print("test accuracy {:8.3f}\n".format(test_accuracy))
 
+torch.save(model.state_dict(), model_path)
+
 def predict(text, text_pipeline):
-    with torch.no_grad():
-        text = torch.tensor(text_pipeline(text), dtype=torch.int64)
-        output = model(text, torch.tensor([0]))
-        return output.argmax(1).item()
+    if len(text.split()) <= 1:
+        return 0
+    else:
+        with torch.no_grad():
+            text = torch.tensor(text_pipeline(text), dtype=torch.int64)
+            output = model(text, torch.tensor([0]))
+            return output.argmax(1).item()
     
 model = model.to('cpu')
