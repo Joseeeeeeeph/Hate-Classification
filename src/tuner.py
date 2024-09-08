@@ -35,7 +35,7 @@ def reset():
     dropout.set(0.3)
     patience.set(4)
 
-def store(hyperparameter, values):
+def store(hyperparameter, *args):
     pkl_name = hyperparameter + '.pkl'
     iteration = 0
     cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '__pycache__')
@@ -51,14 +51,10 @@ def store(hyperparameter, values):
         else:
             break
     
-    with open(file_path, 'wb') as file: pl.dump(values, file)
+    with open(file_path, 'wb') as file: pl.dump(args, file)
 
-best_accuracy = 0
-best_val = None
 best_value_list = []
 classes = 2
-scale = 1
-val_loss = 0
 
 def hyperparameter_tuning(hyperparameter, controls, write=False):
 #    controls := (start, end, step) where:
@@ -67,8 +63,13 @@ def hyperparameter_tuning(hyperparameter, controls, write=False):
 #       step := how many values inbetween
 #    write := whether to store the results in a .pkl file
 
-    global best_accuracy, best_val, scale
+    best_accuracy = 0 
+    best_value = None
+    scale = 1
     all_scores = []
+    all_losses = []
+    
+    val_loss = 0
 
     start, end, step = controls
     if type(start) is not int or type(end) is not int or type(step) is not int:
@@ -77,11 +78,8 @@ def hyperparameter_tuning(hyperparameter, controls, write=False):
         end = int(end / scale)
         step = int(step / scale)
 
-    digits = lambda x: len(str(x - round(x)))
-    display_digits = max(digits(start), digits(end), digits(step))
-
     for i in range(start, end, step):
-        hyperparameter.set(round(float(i * scale), display_digits))
+        hyperparameter.set(float(i * scale))
 
         training_dataloader = DataLoader(train_split, batch_size=batch_size.get(), shuffle=True, collate_fn=collate_batch)
         validation_dataloader = DataLoader(valid_split, batch_size=batch_size.get(), shuffle=True, collate_fn=collate_batch)
@@ -147,14 +145,16 @@ def hyperparameter_tuning(hyperparameter, controls, write=False):
                 break
 
         test_accuracy = evaluate(testing_dataloader)
-        print('accuracy of {:2.3f} for '.format(test_accuracy) + hyperparameter.__str__() + ' = {}'.format(hyperparameter.get()))
+        all_scores.append(test_accuracy)
+        all_losses.append(best_loss)
+        print(f'accuracy of {test_accuracy:2.4f} for ' + hyperparameter.__str__() + f' = {hyperparameter.get():2.4f}')
         if test_accuracy > best_accuracy:
             best_accuracy = test_accuracy
-            best_val = hyperparameter.get()
+            best_value = hyperparameter.get()
 
-    best_value_list.append((hyperparameter.__str__(), best_val))
-    if write: store(hyperparameter.__str__(), all_scores)
-    print('\nTuning complete with ' + hyperparameter.__str__() + ' = {} with an accuracy of {}'.format(best_val, best_accuracy))
+    best_value_list.append((hyperparameter.__str__(), best_value, best_loss))
+    if write: store(hyperparameter.__str__(), all_scores, all_losses)
+    print('\nTuning complete with ' + hyperparameter.__str__() + f' = {best_value:2.4f} with an accuracy of {best_accuracy:2.4f}')
     reset()
 
 # >>>
