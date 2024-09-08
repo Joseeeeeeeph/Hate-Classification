@@ -4,6 +4,7 @@ import pandas as pd
 import pickle as pl
 from time import time
 from math import ceil
+from random import shuffle
 from torch import nn
 from torch.amp import autocast, GradScaler
 from torch.utils.data import DataLoader, Dataset
@@ -11,7 +12,6 @@ from torch.utils.data.dataset import random_split
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
-from random import shuffle
 from tokenizers.pre_tokenizers import Whitespace
 
 # Hyperparameters:
@@ -79,13 +79,14 @@ def can_int(x):
     except ValueError:
         return False
 
-def build(data, path, train, test):
+def build(data, path, train, test, invert=False):
     train_entries = []
     test_entries = []
     dir = os.listdir(path)
 
     numericise_labels = lambda l: 2 if l == 'hate' else 1 if l == 'relation' else 0 if l == 'noHate' else l
     standardise_labels = lambda l: 2 if l >= 1.0 else 1 if l >= 0.5 else 0
+    invert_labels = lambda l: 2 - l
 
     for entry in data: 
         id = str(entry[0])
@@ -99,6 +100,7 @@ def build(data, path, train, test):
             else:
                 continue
 
+        if invert: entry[1] = invert_labels(entry[1])
         entry[1] = numericise_labels(entry[1])
         if type(entry[1]) == float: entry[1] = standardise_labels(entry[1])
 
@@ -149,6 +151,10 @@ hatexplain_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dat
 hatexplain_all_path = os.path.join(hatexplain_path, 'all_files')
 hatexplain_path_list = [os.path.join(hatexplain_all_path, f) for f in os.listdir(hatexplain_all_path)]
 
+tdavidson_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/t-davidson-hate-speech-and-offensive-language')
+tdavidson_all_path = os.path.join(tdavidson_path, 'all_files')
+tdavidson_path_list = [os.path.join(tdavidson_all_path, f) for f in os.listdir(tdavidson_all_path)]
+
 data_cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/data.pkl')
 
 if os.path.isfile(data_cache_path): 
@@ -179,6 +185,11 @@ else:
     hatexplain_df['annotators'] = hatexplain_df['annotators'].apply(get_class)
     hatexplain_data = hatexplain_df.values.tolist()
 
+    tdavidson_train_list, tdavidson_test_list = holdout(tdavidson_path_list, tdavidson_all_path)
+    tdavidson_df = pd.read_csv(os.path.join(tdavidson_path, 'label.csv'), usecols=['class'])
+    tdavidson_df['id'] = [f'{int(i):06d}' for i in tdavidson_df.index]
+    tdavidson_data = tdavidson_df[['id', 'class']].values.tolist()
+
     train_data = []
     test_data = []
 
@@ -198,6 +209,13 @@ else:
     train_data += training_entries
     test_data += testing_entries
 
+    training_entries, testing_entries = build(tdavidson_data, tdavidson_all_path, tdavidson_train_list, tdavidson_test_list, invert=True)
+    train_data += training_entries
+    test_data += testing_entries
+
+    train_data = list(set(train_data))
+    test_data = list(set(test_data))
+
     cache(data_cache_path, train_data, test_data)
 
 training_dataset = HateSpeechDataset(train_data)
@@ -211,7 +229,7 @@ if os.path.isfile(tokenizer_path):
 else:
     tokenizer = Tokenizer(BPE())
     tokenizer.pre_tokenizer = Whitespace()
-    tokenizer_path_list = vicomtech_path_list + avaapm_path_list + ucberkeley_path_list + hatexplain_path_list
+    tokenizer_path_list = vicomtech_path_list + avaapm_path_list + ucberkeley_path_list + hatexplain_path_list + tdavidson_path_list
     shuffle(tokenizer_path_list)
     tokenizer.train(tokenizer_path_list, trainer=BpeTrainer(special_tokens=["[UNK]", "[PAD]", "[CLS]", "[SEP]", "[MASK]"]))
     tokenizer.save(tokenizer_path)
