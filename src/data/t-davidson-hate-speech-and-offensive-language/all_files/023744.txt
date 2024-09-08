@@ -1,0 +1,1 @@
+dblite works like a charm in openwrt arduino yun with full test coverage the gyp version would rarely made in there
