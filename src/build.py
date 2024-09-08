@@ -34,13 +34,21 @@ def build_ucb():
 
     ucb_df = datasets.load_dataset('ucberkeley-dlab/measuring-hate-speech')['train'].to_pandas()
     ucb_df['id'] = ['{:06d}'.format(int(i)) for i in ucb_df.index]
+    ucb_df = ucb_df[['id', 'hate_speech_score', 'text']].drop_duplicates(subset='text')
     ucb_data = ucb_df[['id', 'text']].values.tolist()
-    ucb_df[['id', 'hate_speech_score', 'text']].to_csv(os.path.join(ucb_path, 'label.csv'), index=False)
+    ucb_df.to_csv(os.path.join(ucb_path, 'label.csv'), index=False)
+
+    previous = []
 
     for entry in ucb_data:
-        file = open(os.path.join(ucb_text_path, entry[0] + '.txt'), 'w')
-        file.write(entry[1])
-        file.close()
+        contents = entry[1]
+        if contents in previous: 
+            continue
+        else:
+            file = open(os.path.join(ucb_text_path, entry[0] + '.txt'), 'w')
+            file.write(contents)
+            file.close()
+            previous.append(contents)
 
     print(f'UCBerkeley-DLab-measuring-hate-speech contents stored in {ucb_text_path}')
 
@@ -57,6 +65,17 @@ def build_hatexplain():
         file = open(os.path.join(hatexplain_text_path, entry[0] + '.txt'), 'w')
         file.write(entry[1])
         file.close()
+
+def remove_duplicates(path):
+    previous = []
+    for file in os.listdir(path):
+        with open(os.path.join(path, file), 'r') as f:
+            contents = f.read()
+            f.close()
+        if contents in previous:
+            os.remove(os.path.join(path, file))
+        else:
+            previous.append(contents)
 
 # >>>
 build_avaapm()
