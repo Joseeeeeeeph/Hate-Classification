@@ -69,7 +69,7 @@ def build_hatexplain():
 def remove_duplicates(path):
     previous = []
     for file in os.listdir(path):
-        with open(os.path.join(path, file), 'r') as f:
+        with open(os.path.join(path, file), 'r', encoding='utf-8') as f:
             contents = f.read()
             f.close()
         if contents in previous:
@@ -77,7 +77,11 @@ def remove_duplicates(path):
         else:
             previous.append(contents)
 
+    print(f'Duplicates removed from {path}')
+
 # >>>
 build_avaapm()
 build_ucb()
 build_hatexplain()
+
+remove_duplicates(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/Vicomtech-hate-speech-dataset/all_files'))
