@@ -1,1 +1,1 @@
-number x1 all white 
+number x1 all white

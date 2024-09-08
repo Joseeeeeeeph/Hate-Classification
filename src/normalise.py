@@ -19,7 +19,7 @@ emoji_pattern = re.compile(
 )
 
 remove_links = lambda x: ' '.join([s for s in x.split() if 'http' not in s])
-remove_punctuation = lambda x: ''.join([c for c in x if c not in '!?()}{[]\'"“”`,,.…^+=/:;@#~|%¬'])
+remove_punctuation = lambda x: ''.join([c for c in x if c not in r'!?()}{[]\'"“”`,,.…^+=/:;@#~|%¬\\£$€¥¢'])
 swap_strings = lambda x: x.replace('-', ' ').replace('_', ' ').replace('&amp', 'and').replace('&', 'and').replace('colour', 'color').replace('centre', 'center').replace('favourite', 'favorite').replace('theatre', 'theater').replace('* * * *', '****').replace('* * *', '***').replace('* *', '**').replace('\n', ' ').replace('<user>', '').replace('<url>', '').replace('<censored>', '****').replace('<', '').replace('>', '').replace('  ', ' ')
 remove_emojis = lambda x: emoji_pattern.sub(r'', x)
 
@@ -28,22 +28,14 @@ normalise = lambda x: swap_strings(remove_emojis(remove_punctuation(remove_links
 def normalise_files(files, directory):
     for file in files:
         try:
-            try:
-                with open(file, mode='r') as fin:
-                    contents = fin.read()
-                    fin.close()
-            except:
-                with open(file, mode='r', encoding='utf-8') as fin:
-                    contents = fin.read()
-                    fin.close()
-            try:
-                with open(file, mode='w') as fout:
-                    fout.write(normalise(contents))
-                    fout.close()
-            except:
-                with open(file, mode='w', encoding='utf-8') as fout:
-                    fout.write(normalise(contents))
-                    fout.close()
+            with open(file, mode='r', encoding='utf-8') as fin:
+                contents = fin.read()
+                fin.close()
+                
+            with open(file, mode='w', encoding='utf-8') as fout:
+                fout.write(normalise(contents))
+                fout.close()
+
         except:
             print(f'Could not normalise {file}')
 
