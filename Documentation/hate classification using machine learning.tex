@@ -1,0 +1,32 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage{hyperref}
+\usepackage{biblatex}
+\usepackage{graphicx}
+\usepackage{titlesec}
+\usepackage{booktabs}
+\addbibresource{references.bib}
+\titleformat*{\section}{\large\bfseries}
+\graphicspath{ {./images/} }
+\title{Hate Classification using Machine Learning}
+\author{Joseph Adams}
+\date{}
+\begin{document}
+\maketitle
+
+\paragraph{Overview} This model is a ternary classification model that classifies text as either `hate', `maybe hate', or `not hate'. I decided to make it as a personal project to learn more about machine learning (as well as just for fun). None of the data used in the trainng of this model is owned by me.
+
+\paragraph{Dataset} The model is trained on a dataset comprising of selected entries from 5 other datasets. Each entry is labelled as either 2 (hate), 1 (maybe hate), or 0 (not hate). The other datasets used to create this dataset are found in:
+\begin{itemize}
+    \item Automated Hate Speech Detection and the Problem of Offensive Language \cite{hateoffensive}
+    \item Hate Speech Dataset from a White Supremacy Forum \cite{gibert2018hate}
+    \item Constructing interval variables via faceted Rasch measurement and multitask deep learning: a hate speech application \cite{kennedy2020constructing}
+    \item HateXplain: A Benchmark Dataset for Explainable Hate Speech Detection \cite{mathew2021hatexplain}
+    \item Large-Scale Hate Speech Detection with Cross-Domain Transfer \cite{toraman2022large}
+\end{itemize}
+The dataset comprises 130,000 entries.
+
+\paragraph{Neural Network Architecture} The neural network used in this model consists of a
+
+\printbibliography
+
+\end{document}

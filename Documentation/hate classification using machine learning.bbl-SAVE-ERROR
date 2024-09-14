@@ -1,0 +1,83 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.2 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nty/global//global/global}
+    \entry{gibert2018hate}{inproceedings}{}
+      \name{author}{4}{}{%
+        {{hash=1cb1d0c29b726f6fc32bd62079ee1287}{%
+           family={Gibert},
+           familyi={G\bibinitperiod},
+           given={Ona},
+           giveni={O\bibinitperiod},
+           prefix={de},
+           prefixi={d\bibinitperiod}}}%
+        {{hash=a4c45da37f004033232398b8b10fc50b}{%
+           family={Perez},
+           familyi={P\bibinitperiod},
+           given={Naiara},
+           giveni={N\bibinitperiod}}}%
+        {{hash=d4ffcc7483273c48c519df286ae808d2}{%
+           family={García-Pablos},
+           familyi={G\bibinithyphendelim P\bibinitperiod},
+           given={Aitor},
+           giveni={A\bibinitperiod}}}%
+        {{hash=21bd59ec85d36aed86c3e16a97cb297e}{%
+           family={Cuadros},
+           familyi={C\bibinitperiod},
+           given={Montse},
+           giveni={M\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Brussels, Belgium}%
+      }
+      \list{publisher}{1}{%
+        {Association for Computational Linguistics}%
+      }
+      \strng{namehash}{fc6505f36808a701898c02c2d259803b}
+      \strng{fullhash}{74bb06a8e82b57d56c1c8ce3f5451ed9}
+      \strng{bibnamehash}{fc6505f36808a701898c02c2d259803b}
+      \strng{authorbibnamehash}{fc6505f36808a701898c02c2d259803b}
+      \strng{authornamehash}{fc6505f36808a701898c02c2d259803b}
+      \strng{authorfullhash}{74bb06a8e82b57d56c1c8ce3f5451ed9}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the 2nd Workshop on Abusive Language Online ({ALW}2)}
+      \field{month}{10}
+      \field{title}{{Hate Speech Dataset from a White Supremacy Forum}}
+      \field{year}{2018}
+      \field{pages}{11\bibrangedash 20}
+      \range{pages}{10}
+      \verb{doi}
+      \verb 10.18653/v1/W18-5102
+      \endverb
+      \verb{urlraw}
+      \verb https://www.aclweb.org/anthology/W18-5102
+      \endverb
+      \verb{url}
+      \verb https://www.aclweb.org/anthology/W18-5102
+      \endverb
+    \endentry
+  \enddatalist
+  \missing{hateoffensive \cite {kennedy2020constructing}}
+\endrefsection
+\endinput
+

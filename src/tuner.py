@@ -1,9 +1,11 @@
 import os
 import torch
-from torch.utils.data import DataLoader
+import itertools
 import pickle as pl
+from torch.amp import autocast, GradScaler
+from torch.utils.data import DataLoader, Subset
 
-from model import ClassifierNN, device, vocab_size, emsize, collate_batch, train_split, valid_split, testing_dataset
+from model import ClassifierNN, device, vocab_size, collate_batch, dataset, kf
 
 class ptr():
     def __init__(self, id, value): 
@@ -20,23 +22,20 @@ class ModifiedNN(ClassifierNN):
         self.dropout = torch.nn.Dropout(dropout)
 
 # Hyperparameters:
-batch_size = ptr('Batch Size', 64)
-lr = ptr('LR', 2)
 epochs = ptr('Epochs', 32)
+lr = ptr('LR', 0.001)
+lr_decay = ptr('LR Decay', 0.1)
+batch_size = ptr('Batch Size', 64)
 weight_decay = ptr('Weight Decay', 0.0001)
-dropout = ptr('Dropout', 0.3)
-patience = ptr('Patience', 4)
+dropout = ptr('Dropout', 0.5)
+patience = ptr('Patience', 3)
+loss_delta = ptr('Loss Delta', 0.02)
+gradient_clipping = ptr('Gradient Clipping', 0.1)
+embed_dim = ptr('Embedding Dimension', 256)
+k = ptr('K', 10)
 
-def reset():
-    batch_size.set(64)
-    lr.set(2)
-    epochs.set(32)
-    weight_decay.set(0.0001)
-    dropout.set(0.3)
-    patience.set(4)
-
-def store(hyperparameter, *args):
-    pkl_name = hyperparameter + '.pkl'
+def store(data):
+    pkl_name = 'hyperparameters.pkl'
     iteration = 0
     cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '__pycache__')
     if os.path.exists(cache_path):
@@ -46,124 +45,134 @@ def store(hyperparameter, *args):
     while True:
         if os.path.exists(file_path):
             iteration += 1
-            pkl_name = hyperparameter + f'{iteration}.pkl'
+            pkl_name = 'hyperparameters' + f'{iteration}.pkl'
             file_path = os.path.join(cache_path, pkl_name)
         else:
             break
     
-    with open(file_path, 'wb') as file: pl.dump(args, file)
+    with open(file_path, 'wb') as file: pl.dump(data, file)
 
-best_value_list = []
-classes = 2
+best_avg_loss = float('inf')
 
-def hyperparameter_tuning(hyperparameter, controls, write=False):
-#    controls := (start, end, step) where:
-#       start := starting value of hyperparameter
-#       end := ending value of hyperparameter
-#       step := how many values inbetween
-#    write := whether to store the results in a .pkl file
+def hyperparameter_tuning(hyperparameters, generators, write=False):
+    value_scales = [g[2] for g in generators]
+    value_gen = [list(range(g[0] / g[2], (g[1] + 1) / g[2])) for g in generators]
+    for i in range(len(value_gen)): 
+        value_gen[i] = [v * value_scales[i] for v in value_gen[i]]
 
-    best_accuracy = 0 
-    best_value = None
-    scale = 1
-    all_scores = []
-    all_losses = []
-    
-    val_loss = 0
+    value_gen_lengths = [len(gv) for gv in value_gen]
+    max_length = min(value_gen_lengths)
+    if len(set(value_gen_lengths)) != 1: 
+        print('Adjusting the amount of generated values to make them equal across hyperparameters.')
+        value_gens = [gv[:max_length] for gv in value_gens]
+    indices = list(range(max_length))
 
-    start, end, step = controls
-    if type(start) is not int or type(end) is not int or type(step) is not int:
-        scale = step
-        start = int(start / scale)
-        end = int(end / scale)
-        step = int(step / scale)
+    best_hyperparameters = {hyperparameter.__str(): None for hyperparameter in hyperparameters}
+    hyperparameter_value_gens = dict(zip([h.__str__() for h in hyperparameters], value_gens))
 
-    for i in range(start, end, step):
-        hyperparameter.set(float(i * scale))
+    i = -1
+    for state in itertools.product(hyperparameters, indices):
+        h = state[0]
+        idx = state[1]
+        h.set(hyperparameter_value_gens[h.__str__()][idx])
+        i += 1
 
-        training_dataloader = DataLoader(train_split, batch_size=batch_size.get(), shuffle=True, collate_fn=collate_batch)
-        validation_dataloader = DataLoader(valid_split, batch_size=batch_size.get(), shuffle=True, collate_fn=collate_batch)
-        testing_dataloader = DataLoader(testing_dataset, batch_size=batch_size.get(), shuffle=True, collate_fn=collate_batch)
-
+        fold_results = []
         total_accuracy = None
-        model = ModifiedNN(vocab_size, emsize, classes, dropout.get()).to(device)
-        criterion = torch.nn.CrossEntropyLoss()
-        optimizer = torch.optim.SGD(model.parameters(), lr=lr.get(), weight_decay=weight_decay.get())
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.1)
 
-        def train(dataloader):
-            model.train()
-            total_acc, total_count = 0, 0
-            log_interval = 500
+        for _, (train_idx, val_idx) in enumerate(kf.split(dataset)):
+            train_subset = Subset(dataset, train_idx)
+            val_subset = Subset(dataset, val_idx)
+            train_loader = DataLoader(train_subset, batch_size=batch_size.get(), shuffle=True, collate_fn=collate_batch)
+            val_loader = DataLoader(val_subset, batch_size=batch_size.get(), shuffle=True, collate_fn=collate_batch)
+            
+            model = ModifiedNN(vocab_size, embed_dim.get(), dataset.nClasses, dropout.get()).to(device)
+            criterion = torch.nn.CrossEntropyLoss()
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr.get(), weight_decay=weight_decay.get())
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=lr_decay.get())
+            scaler = GradScaler()
 
-            for id, (label, text, offsets) in enumerate(dataloader):
-                optimizer.zero_grad()
-                predicted_label = model(text, offsets)
-                loss = criterion(predicted_label, label)
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
-                optimizer.step()
-                total_acc += (predicted_label.argmax(1) == label).sum().item()
-                total_count += label.size(0)
-                if id % log_interval == 0 and id > 0:
-                    total_acc, total_count = 0, 0
+            best_loss = float('inf')
+            patience_counter = 0
+            total_accuracy = None
 
-        def evaluate(dataloader):
-            global val_loss
-            model.eval()
-            total_acc, total_count = 0, 0
+            def train(dataloader):
+                model.train()
+                total_acc, total_count = 0, 0
+                log_interval = 500
 
-            with torch.no_grad():
-                for _, (label, text, offsets) in enumerate(dataloader):
-                    predicted_label = model(text, offsets)
+                for id, (label, text, offsets) in enumerate(dataloader):
+                    optimizer.zero_grad()
+                    with autocast(device_type=device.type):
+                        predicted_label = model(text, offsets)
+                        loss = criterion(predicted_label, label)
+                    scaler.scale(loss).backward()
+                    scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clipping.get())
+                    scaler.step(optimizer)
+                    scaler.update()
                     total_acc += (predicted_label.argmax(1) == label).sum().item()
                     total_count += label.size(0)
-                    val_loss += criterion(predicted_label, label).item()
-            return total_acc / total_count
+                    if id % log_interval == 0 and id > 0:
+                        total_acc, total_count = 0, 0
 
-        best_loss = float('inf')
-        patience_counter = 0
+            def evaluate(dataloader):
+                global val_loss
+                model.eval()
+                total_acc, total_count = 0, 0
 
-        for _ in range(1, int(epochs.get()) + 1):
-            train(training_dataloader)
+                with torch.no_grad():
+                    for _, (label, text, offsets) in enumerate(dataloader):
+                        predicted_label = model(text, offsets)
+                        total_acc += (predicted_label.argmax(1) == label).sum().item()
+                        total_count += label.size(0)
+                        val_loss += criterion(predicted_label, label).item()
+                return total_acc / total_count
 
-            val_loss = 0
-            validation_accuracy = evaluate(validation_dataloader)
-            val_loss /= len(validation_dataloader)
+            for _ in range(1, epochs.get() + 1):
+                train(train_loader)
+                val_loss = 0
+                validation_accuracy = evaluate(val_loader)
+                val_loss /= len(val_loader)
 
-            if total_accuracy is not None and total_accuracy > validation_accuracy:
-                scheduler.step()
-            else:
-                total_accuracy = validation_accuracy
+                if total_accuracy is not None and total_accuracy > validation_accuracy:
+                    scheduler.step()
+                else:
+                    total_accuracy = validation_accuracy
 
-            if val_loss < best_loss:
-                best_loss = val_loss
-                patience_counter = 0
-            else:
-                patience_counter += 1
-            if patience_counter >= int(patience.get()):
-                break
+                if val_loss < best_loss - loss_delta.get():
+                    best_loss = val_loss
+                    patience_counter = 0
+                else:
+                    patience_counter += 1
+                if patience_counter >= patience.get():
+                    break
 
-        test_accuracy = evaluate(testing_dataloader)
-        all_scores.append(test_accuracy)
-        all_losses.append(best_loss)
-        print(f'accuracy of {test_accuracy:2.4f} for ' + hyperparameter.__str__() + f' = {hyperparameter.get():2.4f}')
-        if test_accuracy > best_accuracy:
-            best_accuracy = test_accuracy
-            best_value = hyperparameter.get()
+            fold_results.append((val_loss, validation_accuracy))
 
-    best_value_list.append((hyperparameter.__str__(), best_value, best_loss))
-    if write: store(hyperparameter.__str__(), all_scores, all_losses)
-    print('\nTuning complete with ' + hyperparameter.__str__() + f' = {best_value:2.4f} with an accuracy of {best_accuracy:2.4f}')
-    reset()
+        avg_loss = sum([result[0] for result in fold_results]) / k.get()
+        avg_accuracy = sum([result[1] for result in fold_results]) / k.get()
+        print(f'Average Validation Loss: {avg_loss:.4f}, Average Accuracy: {avg_accuracy:.4f}')
+
+        if avg_loss < best_avg_loss:
+            best_avg_loss = avg_loss
+            best_hyperparameters = {hyperparameter.__str(): hyperparameter.get() for hyperparameter in hyperparameters}
+            if write: store(best_hyperparameters)
 
 # >>>
-hyperparameter_tuning(batch_size, (16, 256, 16), write=True)
-hyperparameter_tuning(lr, (0.1, 10, 0.1), write=True)
-hyperparameter_tuning(weight_decay, (0, 0.001, 0.0001), write=True)
-hyperparameter_tuning(weight_decay, (0, 0.1, 0.01), write=True)
-hyperparameter_tuning(weight_decay, (0, 1, 0.1), write=True)
-hyperparameter_tuning(dropout, (0, 0.5, 0.01), write=True)
-hyperparameter_tuning(patience, (2, 10, 1), write=True)
+hyperparameters = [epochs, lr, lr_decay, batch_size, weight_decay, dropout, patience, loss_delta, gradient_clipping, embed_dim, k]
+generators = [
+    (30, 30, 1),
+    (0.0001, 0.002, 0.005),
+    (0.1, 0.5, 0.1),
+    (32, 256, 64)
+    (0.00001, 0.0001, 0.00005),
+    (0.0, 0.5, 0.25),
+    (3, 6, 3),
+    (0, 0.5, 0.25),
+    (0.1, 0.2, 0.05),
+    (64, 512, 64),
+    (5, 15, 5),
+]
 
-print(f'\nBest hyperparameters:\n {best_value_list}')
+hyperparameter_tuning(hyperparameters, generators, write=True)

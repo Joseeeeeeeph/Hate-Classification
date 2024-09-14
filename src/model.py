@@ -3,26 +3,37 @@ import torch
 import pandas as pd
 import pickle as pl
 from time import time
-from math import ceil
 from random import shuffle
 from torch import nn
 from torch.amp import autocast, GradScaler
-from torch.utils.data import DataLoader, Dataset
-from torch.utils.data.dataset import random_split
+from torch.utils.data import DataLoader, Dataset, Subset
+from sklearn.model_selection import KFold
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
 from tokenizers.pre_tokenizers import Whitespace
+from multiprocessing import cpu_count
 
 # Hyperparameters:
-EPOCHS = 18
-LR = 2
+EPOCHS = 20
+LR = 0.001
+LR_DECAY = 0.1
 BATCH_SIZE = 64
 WEIGHT_DECAY = 0.0001
-DROP_OUT = 0.01
-PATIENCE = 4
+DROP_OUT = 0.5
+PATIENCE = 3
+LOSS_DELTA = 0.005
+GRADIENT_CLIPPING = 0.1
+EMBED_DIM = 256
+K = 10
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+    torch.backends.cudnn.benchmark = True
+else:
+    device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
+
+READ_FROM_CACHE = True
 
 class HateSpeechDataset(Dataset):
     def __init__(self, contents):
@@ -36,27 +47,6 @@ class HateSpeechDataset(Dataset):
     def __len__(self):
         return len(self.contents)
     
-def holdout(data_list, all_path, train=None, test=None):
-    head = len(all_path) + 1
-    tail = -len('.txt')
-
-    if train:
-        training = [f[:tail] for f in os.listdir(train) if f in os.listdir(all_path)]
-    else:
-        training = []
-    if test:
-        testing = [f[:tail] for f in os.listdir(test) if f in os.listdir(all_path)]
-    else:
-        testing = []
-
-    remaining = [f[head:tail] for f in data_list if f[head:tail] not in training and f[head:tail] not in testing]
-    shuffle(remaining)
-    partition = int(ceil(0.8 * len(remaining)))
-    training = training + remaining[:partition]
-    testing = testing + remaining[partition:]
-    
-    return training, testing
-
 def get_class(annotations):
     score = 0
     for a in annotations:
@@ -78,10 +68,17 @@ def can_int(x):
         return True
     except ValueError:
         return False
+    
+def minutes(t):
+        mins = int(t // 60)
+        secs = t % 60
+        if mins > 0:
+            return '{:2d}m {:2.1f}s'.format(mins, secs)
+        else:
+            return ' {:2.1f}s'.format(secs)
 
-def build(data, path, train, test, invert=False):
-    train_entries = []
-    test_entries = []
+def build(data, path, invert=False):
+    data_entries = []
     dir = os.listdir(path)
 
     numericise_labels = lambda l: 2 if l == 'hate' else 1 if l == 'relation' else 0 if l == 'noHate' else l
@@ -109,29 +106,23 @@ def build(data, path, train, test, invert=False):
 
         if entry[1] == 'idk/skip':
             continue
-        elif id in train:
+        
+        try:
             datum = tuple(entry[1:])
-            if datum in train_entries:
+            if datum in data_entries:
                 print('Duplicate entry:', datum)
                 continue
             else:
-                train_entries.append(datum)
-        elif id in test:
-            datum = tuple(entry[1:])
-            if datum in test_entries:
-                print('Duplicate entry:', datum)
-                continue
-            else:
-                test_entries.append(datum)
-        else:
+                data_entries.append(datum)
+        except:
             print('Could not allocate:', id)
     
-    return train_entries, test_entries
+    return data_entries
 
-def cache(path, *args):
+def cache(path, data):
     try:
         with open(path, 'wb') as file:
-            pl.dump(args, file)
+            pl.dump(data, file)
     except:
         print(f'Could not cache data at {path}')
 
@@ -157,74 +148,46 @@ tdavidson_path_list = [os.path.join(tdavidson_all_path, f) for f in os.listdir(t
 
 data_cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/data.pkl')
 
-if os.path.isfile(data_cache_path): 
+if os.path.isfile(data_cache_path) and READ_FROM_CACHE: 
     with open(data_cache_path, 'rb') as file:
-        cached_data = pl.load(file)
-        train_data = cached_data[0]
-        test_data = cached_data[1]
+        data = pl.load(file)
 
 else:
     train_path = os.path.join(vicomtech_path, 'sampled_train')
     test_path = os.path.join(vicomtech_path, 'sampled_test')
-    vicomtech_train_list, vicomtech_test_list = holdout(vicomtech_path_list, vicomtech_all_path, train=train_path, test=test_path)
     vicomtech_data = pd.read_csv(os.path.join(vicomtech_path, 'annotations_metadata.csv'), usecols=['file_id', 'label']).values.tolist()
 
     avaapm_id_list = [int(f[:-4]) for f in os.listdir(tweets_path)]
-    avaapm_train_list, avaapm_test_list = holdout(avaapm_path_list, tweets_path)
     avaapm_csv = pd.read_csv(os.path.join(avaapm_path, 'label.csv'), usecols=['TweetID', 'LangID', 'HateLabel'])
     avaapm_csv_en = avaapm_csv[avaapm_csv['LangID'] == 1]
     filtered_csv_en = avaapm_csv_en[avaapm_csv_en['TweetID'].isin(avaapm_id_list)]
     avaapm_data = filtered_csv_en[['TweetID', 'HateLabel']].values.tolist()
 
-    ucberkeley_train_list, ucberkeley_test_list = holdout(ucberkeley_path_list, ucberkeley_all_path)
     ucberkeley_data = pd.read_csv(os.path.join(ucberkeley_path, 'label.csv'), usecols=['id', 'hate_speech_score']).values.tolist()
 
-    hatexplain_train_list, hatexplain_test_list = holdout(hatexplain_path_list, hatexplain_all_path)
     hatexplain_df = pd.read_json(os.path.join(hatexplain_path, 'dataset.json')).T
     hatexplain_df = hatexplain_df[['post_id', 'annotators']]
     hatexplain_df['annotators'] = hatexplain_df['annotators'].apply(get_class)
     hatexplain_data = hatexplain_df.values.tolist()
 
-    tdavidson_train_list, tdavidson_test_list = holdout(tdavidson_path_list, tdavidson_all_path)
     tdavidson_df = pd.read_csv(os.path.join(tdavidson_path, 'label.csv'), usecols=['class'])
     tdavidson_df['id'] = [f'{int(i):06d}' for i in tdavidson_df.index]
     tdavidson_data = tdavidson_df[['id', 'class']].values.tolist()
 
-    train_data = []
-    test_data = []
+    all_data = []
+    all_data += build(vicomtech_data, vicomtech_all_path)
+    all_data += build(avaapm_data, tweets_path)
+    all_data += build(ucberkeley_data, ucberkeley_all_path)
+    all_data += build(hatexplain_data, hatexplain_all_path)
+    all_data += build(tdavidson_data, tdavidson_all_path, invert=True)
+    all_data = list(set(all_data))
 
-    training_entries, testing_entries = build(vicomtech_data, vicomtech_all_path, vicomtech_train_list, vicomtech_test_list)
-    train_data += training_entries
-    test_data += testing_entries
+    cache(data_cache_path, all_data)
 
-    training_entries, testing_entries = build(avaapm_data, tweets_path, avaapm_train_list, avaapm_test_list)
-    train_data += training_entries
-    test_data += testing_entries
-
-    training_entries, testing_entries = build(ucberkeley_data, ucberkeley_all_path, ucberkeley_train_list, ucberkeley_test_list)
-    train_data += training_entries
-    test_data += testing_entries
-
-    training_entries, testing_entries = build(hatexplain_data, hatexplain_all_path, hatexplain_train_list, hatexplain_test_list)
-    train_data += training_entries
-    test_data += testing_entries
-
-    training_entries, testing_entries = build(tdavidson_data, tdavidson_all_path, tdavidson_train_list, tdavidson_test_list, invert=True)
-    train_data += training_entries
-    test_data += testing_entries
-
-    train_data = list(set(train_data))
-    test_data = list(set(test_data))
-
-    cache(data_cache_path, train_data, test_data)
-
-training_dataset = HateSpeechDataset(train_data)
-testing_dataset = HateSpeechDataset(test_data)
-n = int(len(training_dataset) * 0.95)
-train_split, valid_split = random_split(training_dataset, [n, len(training_dataset) - n])
+dataset = HateSpeechDataset(all_data)
 
 tokenizer_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tokenizer.json')
-if os.path.isfile(tokenizer_path):
+if os.path.isfile(tokenizer_path) and READ_FROM_CACHE:
     tokenizer = Tokenizer.from_file(tokenizer_path)
 else:
     tokenizer = Tokenizer(BPE())
@@ -248,9 +211,7 @@ def collate_batch(batch):
     text_list = torch.cat(text_list)
     return label_list.to(device), text_list.to(device), offsets.to(device)
 
-training_dataloader = DataLoader(train_split, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch)
-validation_dataloader = DataLoader(valid_split, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch)
-testing_dataloader = DataLoader(testing_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch)
+kf = KFold(n_splits=K, shuffle=True)
 
 class ClassifierNN(nn.Module):
     def __init__(self, vocab_size, embed_dim, num_class):
@@ -275,98 +236,97 @@ class ClassifierNN(nn.Module):
         return self.activation(output)
 
 vocab_size = tokenizer.get_vocab_size()
-emsize = 64
 total_accuracy = None
-
-model = ClassifierNN(vocab_size, emsize, training_dataset.nClasses).to(device)
+fold_results = []
 model_path = os.path.join(os.path.dirname(os.path.realpath(os.path.dirname(__file__))), 'model.pth')
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.1)
-scaler = GradScaler()
 
-def train(dataloader):
-    model.train()
-    total_acc, total_count = 0, 0
-    log_interval = 500
+start_time = time()
+for fold, (train_idx, val_idx) in enumerate(kf.split(dataset)):
+    print(f'Fold {fold + 1}/{K}')
+    
+    train_subset = Subset(dataset, train_idx)
+    val_subset = Subset(dataset, val_idx)
+    train_loader = DataLoader(train_subset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch, num_workers=cpu_count())
+    val_loader = DataLoader(val_subset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch, num_workers=cpu_count())
+    
+    model = ClassifierNN(vocab_size, EMBED_DIM, dataset.nClasses).to(device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=LR_DECAY)
+    scaler = GradScaler()
 
-    for id, (label, text, offsets) in enumerate(dataloader):
-        optimizer.zero_grad()
-        with autocast(device_type=device.type):
-            predicted_label = model(text, offsets)
-            loss = criterion(predicted_label, label)
-        scaler.scale(loss).backward()
-        scaler.unscale_(optimizer)
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
-        scaler.step(optimizer)
-        scaler.update()
-        total_acc += (predicted_label.argmax(1) == label).sum().item()
-        total_count += label.size(0)
-        if id % log_interval == 0 and id > 0:
-            print(f'epoch {epoch:3d} | {id:5d}/{len(dataloader):5d} batches | accuracy: {total_acc / total_count:8.3f}')
-            total_acc, total_count = 0, 0
+    best_loss = float('inf')
+    patience_counter = 0
+    total_accuracy = None
 
-def evaluate(dataloader):
-    global val_loss
-    model.eval()
-    total_acc, total_count = 0, 0
+    def train(dataloader):
+        model.train()
+        total_acc, total_count = 0, 0
+        log_interval = 500
 
-    with torch.no_grad():
-        for _, (label, text, offsets) in enumerate(dataloader):
-            predicted_label = model(text, offsets)
+        for id, (label, text, offsets) in enumerate(dataloader):
+            optimizer.zero_grad()
+            with autocast(device_type=device.type):
+                predicted_label = model(text, offsets)
+                loss = criterion(predicted_label, label)
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), GRADIENT_CLIPPING)
+            scaler.step(optimizer)
+            scaler.update()
             total_acc += (predicted_label.argmax(1) == label).sum().item()
             total_count += label.size(0)
-            val_loss += criterion(predicted_label, label).item()
-    return total_acc / total_count
+            if id % log_interval == 0 and id > 0:
+                print(f'epoch {epoch:3d} | {id:5d}/{len(dataloader):5d} batches | accuracy: {total_acc / total_count:8.3f}')
+                total_acc, total_count = 0, 0
 
-best_loss = float('inf')
-patience_counter = 0
-start_time = time()
+    def evaluate(dataloader):
+        global val_loss
+        model.eval()
+        total_acc, total_count = 0, 0
 
-print('\ntraining model:')
-for epoch in range(1, EPOCHS + 1):
-    epoch_start_time = time()
-    train(training_dataloader)
-    val_loss = 0
-    validation_accuracy = evaluate(validation_dataloader)
-    val_loss /= len(validation_dataloader)
+        with torch.no_grad():
+            for _, (label, text, offsets) in enumerate(dataloader):
+                predicted_label = model(text, offsets)
+                total_acc += (predicted_label.argmax(1) == label).sum().item()
+                total_count += label.size(0)
+                val_loss += criterion(predicted_label, label).item()
+        return total_acc / total_count
 
-    if total_accuracy is not None and total_accuracy > validation_accuracy:
-        scheduler.step()
-    else:
-        total_accuracy = validation_accuracy
-    print(f'end of epoch {epoch:3d} | time: {time() - epoch_start_time:5.2f}s | accuracy: {validation_accuracy:8.3f}')
+    for epoch in range(1, EPOCHS + 1):
+        epoch_start_time = time()
+        train(train_loader)
+        val_loss = 0
+        validation_accuracy = evaluate(val_loader)
+        val_loss /= len(val_loader)
 
-    if val_loss < best_loss:
-        best_loss = val_loss
-        patience_counter = 0
-    else:
-        patience_counter += 1
-    if patience_counter >= PATIENCE:
-        print('early stopping.')
-        break
+        if total_accuracy is not None and total_accuracy > validation_accuracy:
+            scheduler.step()
+        else:
+            total_accuracy = validation_accuracy
+        print(f'end of epoch {epoch:3d} | time: {time() - epoch_start_time:5.2f}s | accuracy: {validation_accuracy:8.3f}')
 
-def minutes(t):
-    mins = int(t // 60)
-    secs = t % 60
-    if mins > 0:
-        return '{:2d}m {:2.1f}s'.format(mins, secs)
-    else:
-        return ' {:2.1f}s'.format(secs)
+        if val_loss < best_loss - LOSS_DELTA:
+            torch.save(model.state_dict(), model_path)
+            best_loss = val_loss
+            patience_counter = 0
+        else:
+            patience_counter += 1
+        if patience_counter >= PATIENCE:
+            print('early stopping.')
+            break
+
+        fold_results.append((val_loss, validation_accuracy))
 
 print("training finished in" + minutes(time() - start_time) + "\n\nChecking the results of test dataset.")
-test_accuracy = evaluate(testing_dataloader)
-print("test accuracy {:8.3f}\n".format(test_accuracy))
-
-torch.save(model.state_dict(), model_path)
+avg_loss = sum([result[0] for result in fold_results]) / K
+avg_accuracy = sum([result[1] for result in fold_results]) / K
+print(f'Average Validation Loss: {avg_loss:.4f}, Average Accuracy: {avg_accuracy:.4f}')
 
 def predict(text, text_pipeline):
-    if len(text.split()) <= 1:
-        return 0
-    else:
-        with torch.no_grad():
-            text = torch.tensor(text_pipeline(text), dtype=torch.int64)
-            output = model(text, torch.tensor([0]))
-            return output.argmax(1).item()
+    with torch.no_grad():
+        text = torch.tensor(text_pipeline(text), dtype=torch.int64)
+        output = model(text, torch.tensor([0]))
+        return output.argmax(1).item()
     
 model = model.to('cpu')
