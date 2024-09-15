@@ -2,6 +2,7 @@ import os
 import torch
 import itertools
 import pickle as pl
+from numpy import linspace
 from torch.amp import autocast, GradScaler
 from torch.utils.data import DataLoader, Subset
 
@@ -31,15 +32,16 @@ dropout = ptr('Dropout', 0.5)
 patience = ptr('Patience', 3)
 loss_delta = ptr('Loss Delta', 0.02)
 gradient_clipping = ptr('Gradient Clipping', 0.1)
-embed_dim = ptr('Embedding Dimension', 256)
-k = ptr('K', 10)
+embed_dim = ptr('Embedding Dimension', 173)
+k = ptr('k', 10)
+
+VAL_PER_GV = 3
 
 def store(data):
     pkl_name = 'hyperparameters.pkl'
     iteration = 0
     cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '__pycache__')
-    if os.path.exists(cache_path):
-        os.mkdir(cache_path)
+    if not os.path.exists(cache_path): os.mkdir(cache_path)
     file_path = os.path.join(cache_path, pkl_name)
 
     while True:
@@ -52,26 +54,40 @@ def store(data):
     
     with open(file_path, 'wb') as file: pl.dump(data, file)
 
+def load_states():
+    cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '__pycache__')
+    if not os.path.exists(cache_path): os.mkdir(cache_path)
+    file_path = os.path.join(cache_path, 'prevstates.pkl')
+    if os.path.isfile(file_path):
+        with open(file_path, 'rb') as file: return pl.load(file)[0]
+    else:
+        return []
+    
+def cache_states(states):
+    cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '__pycache__')
+    file_path = os.path.join(cache_path, 'prevstates.pkl')
+    with open(file_path, 'wb') as file: pl.dump(states, file)
+
 best_avg_loss = float('inf')
 
 def hyperparameter_tuning(hyperparameters, generators, write=False):
-    value_scales = [g[2] for g in generators]
-    value_gen = [list(range(g[0] / g[2], (g[1] + 1) / g[2])) for g in generators]
-    for i in range(len(value_gen)): 
-        value_gen[i] = [v * value_scales[i] for v in value_gen[i]]
+    value_gen = [linspace(g[0], g[1], VAL_PER_GV).tolist() for g in generators]
+    indices = list(range(VAL_PER_GV))
 
-    value_gen_lengths = [len(gv) for gv in value_gen]
-    max_length = min(value_gen_lengths)
-    if len(set(value_gen_lengths)) != 1: 
-        print('Adjusting the amount of generated values to make them equal across hyperparameters.')
-        value_gens = [gv[:max_length] for gv in value_gens]
-    indices = list(range(max_length))
+    best_hyperparameters = {hyperparameter.__str__(): None for hyperparameter in hyperparameters}
+    hyperparameter_value_gens = dict(zip([h.__str__() for h in hyperparameters], value_gen))
+    for h in hyperparameters: h.set(hyperparameter_value_gens[h.__str__()][0])
 
-    best_hyperparameters = {hyperparameter.__str(): None for hyperparameter in hyperparameters}
-    hyperparameter_value_gens = dict(zip([h.__str__() for h in hyperparameters], value_gens))
+    previous_states = load_states()
 
     i = -1
     for state in itertools.product(hyperparameters, indices):
+        if state in previous_states:
+            continue
+        else:
+            previous_states.append(state)
+            cache_states(previous_states)
+
         h = state[0]
         idx = state[1]
         h.set(hyperparameter_value_gens[h.__str__()][idx])
@@ -162,17 +178,17 @@ def hyperparameter_tuning(hyperparameters, generators, write=False):
 # >>>
 hyperparameters = [epochs, lr, lr_decay, batch_size, weight_decay, dropout, patience, loss_delta, gradient_clipping, embed_dim, k]
 generators = [
-    (30, 30, 1),
-    (0.0001, 0.002, 0.005),
-    (0.1, 0.5, 0.1),
-    (32, 256, 64)
-    (0.00001, 0.0001, 0.00005),
-    (0.0, 0.5, 0.25),
-    (3, 6, 3),
-    (0, 0.5, 0.25),
-    (0.1, 0.2, 0.05),
-    (64, 512, 64),
-    (5, 15, 5),
+    (30, 30),               # Epochs
+    (0.0001, 0.002),        # LR
+    (0.1, 0.5),             # LR decay
+    (32, 256),              # Batch Size
+    (0.00001, 0.0001),      # Weight Decay
+    (0.0, 0.5),             # Dropout
+    (3, 6),                 # Patience
+    (0, 0.5),               # Loss Delta
+    (0.1, 0.2),             # Gradient Clipping
+    (64, 512),              # Embed Dim
+    (5, 15)                 # k
 ]
 
 hyperparameter_tuning(hyperparameters, generators, write=True)

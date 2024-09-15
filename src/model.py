@@ -7,24 +7,23 @@ from random import shuffle
 from torch import nn
 from torch.amp import autocast, GradScaler
 from torch.utils.data import DataLoader, Dataset, Subset
-from sklearn.model_selection import KFold
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
 from tokenizers.pre_tokenizers import Whitespace
-from multiprocessing import cpu_count
+from sklearn.model_selection import StratifiedKFold
 
 # Hyperparameters:
-EPOCHS = 20
-LR = 0.001
-LR_DECAY = 0.1
-BATCH_SIZE = 64
+EPOCHS = 32
+LR = 0.00001
+LR_DECREASE = 0.1
+BATCH_SIZE = 96
 WEIGHT_DECAY = 0.0001
-DROP_OUT = 0.5
-PATIENCE = 3
-LOSS_DELTA = 0.005
-GRADIENT_CLIPPING = 0.1
-EMBED_DIM = 256
+DROP_OUT = 0.3
+PATIENCE = 5
+LOSS_DELTA = 0.001
+GRADIENT_CLIPPING = 0.05
+EMBED_DIM = 64
 K = 10
 
 if torch.cuda.is_available():
@@ -39,7 +38,7 @@ class HateSpeechDataset(Dataset):
     def __init__(self, contents):
         super(HateSpeechDataset, self).__init__()
         self.contents = contents
-        self.nClasses = len(set(['hate', 'maybe hate', 'not hate']))
+        self.nClasses = len({'hate', 'maybe hate', 'not hate'})
 
     def __getitem__(self, index):
         return self.contents[index]
@@ -73,7 +72,7 @@ def minutes(t):
         mins = int(t // 60)
         secs = t % 60
         if mins > 0:
-            return '{:2d}m {:2.1f}s'.format(mins, secs)
+            return '{:3d}m {:2.1f}s'.format(mins, secs)
         else:
             return ' {:2.1f}s'.format(secs)
 
@@ -150,7 +149,7 @@ data_cache_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dat
 
 if os.path.isfile(data_cache_path) and READ_FROM_CACHE: 
     with open(data_cache_path, 'rb') as file:
-        data = pl.load(file)
+        all_data = pl.load(file)[0]
 
 else:
     train_path = os.path.join(vicomtech_path, 'sampled_train')
@@ -211,48 +210,66 @@ def collate_batch(batch):
     text_list = torch.cat(text_list)
     return label_list.to(device), text_list.to(device), offsets.to(device)
 
-kf = KFold(n_splits=K, shuffle=True)
+kf = StratifiedKFold(n_splits=K, shuffle=True)
 
 class ClassifierNN(nn.Module):
     def __init__(self, vocab_size, embed_dim, num_class):
         super(ClassifierNN, self).__init__()
-        self.embedding = nn.EmbeddingBag(vocab_size, embed_dim, sparse=False)
-        self.fc = nn.Linear(embed_dim, num_class)
+        self.embedding = nn.EmbeddingBag(vocab_size, embed_dim)
+        self.hidden_size1 = 128
+        self.hidden_size2 = 64
+        self.fc1 = nn.Linear(embed_dim, self.hidden_size1)
+        self.fc2 = nn.Linear(self.hidden_size1, self.hidden_size2)
+        self.fc3 = nn.Linear(self.hidden_size2, num_class)
         self.dropout = nn.Dropout(DROP_OUT)
-        self.batch_norm = nn.BatchNorm1d(embed_dim)
+        self.batch_norm1 = nn.BatchNorm1d(self.hidden_size1)
+        self.batch_norm2 = nn.BatchNorm1d(self.hidden_size2)
         self.activation = nn.ReLU()
         self.init_weights()
 
     def init_weights(self):
         nn.init.xavier_uniform_(self.embedding.weight)
-        nn.init.xavier_uniform_(self.fc.weight)
-        self.fc.bias.data.zero_()
+        nn.init.xavier_uniform_(self.fc1.weight)
+        nn.init.xavier_uniform_(self.fc2.weight)
+        nn.init.xavier_uniform_(self.fc3.weight)
+        self.fc1.bias.data.zero_()
+        self.fc2.bias.data.zero_()
+        self.fc3.bias.data.zero_()
 
     def forward(self, text, offsets):
         embedded = self.embedding(text, offsets)
-        embedded = self.batch_norm(embedded)
-        embedded = self.dropout(embedded)
-        output = self.fc(embedded)
-        return self.activation(output)
+        hidden = self.fc1(embedded)
+        hidden = self.batch_norm1(hidden)
+        hidden = self.activation(hidden)
+        hidden = self.dropout(hidden)
+
+        hidden = self.fc2(hidden)
+        hidden = self.batch_norm2(hidden)
+        hidden = self.activation(hidden)
+        hidden = self.dropout(hidden)
+
+        output = self.fc3(hidden)
+        return output
 
 vocab_size = tokenizer.get_vocab_size()
 total_accuracy = None
+overall_best_loss = float('inf')
 fold_results = []
 model_path = os.path.join(os.path.dirname(os.path.realpath(os.path.dirname(__file__))), 'model.pth')
 
 start_time = time()
-for fold, (train_idx, val_idx) in enumerate(kf.split(dataset)):
+for fold, (train_idx, val_idx) in enumerate(kf.split(dataset, [d[0] for d in all_data])):
     print(f'Fold {fold + 1}/{K}')
     
     train_subset = Subset(dataset, train_idx)
     val_subset = Subset(dataset, val_idx)
-    train_loader = DataLoader(train_subset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch, num_workers=cpu_count())
-    val_loader = DataLoader(val_subset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch, num_workers=cpu_count())
+    train_loader = DataLoader(train_subset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch)
+    val_loader = DataLoader(val_subset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch)
     
     model = ClassifierNN(vocab_size, EMBED_DIM, dataset.nClasses).to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=LR_DECAY)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=LR_DECREASE, patience=2)
     scaler = GradScaler()
 
     best_loss = float('inf')
@@ -285,7 +302,7 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(dataset)):
         model.eval()
         total_acc, total_count = 0, 0
 
-        with torch.no_grad():
+        with torch.no_grad(), autocast(device_type=device.type):
             for _, (label, text, offsets) in enumerate(dataloader):
                 predicted_label = model(text, offsets)
                 total_acc += (predicted_label.argmax(1) == label).sum().item()
@@ -301,13 +318,15 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(dataset)):
         val_loss /= len(val_loader)
 
         if total_accuracy is not None and total_accuracy > validation_accuracy:
-            scheduler.step()
+            scheduler.step(metrics=validation_accuracy)
         else:
             total_accuracy = validation_accuracy
         print(f'end of epoch {epoch:3d} | time: {time() - epoch_start_time:5.2f}s | accuracy: {validation_accuracy:8.3f}')
 
         if val_loss < best_loss - LOSS_DELTA:
-            torch.save(model.state_dict(), model_path)
+            if val_loss < overall_best_loss:
+                torch.save(model.state_dict(), model_path)
+                overall_best_loss = val_loss
             best_loss = val_loss
             patience_counter = 0
         else:
