@@ -6,25 +6,14 @@ from time import time
 from random import shuffle
 from torch import nn
 from torch.amp import autocast, GradScaler
-from torch.utils.data import DataLoader, Dataset, Subset
+from torch.utils.data import DataLoader, Subset
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
 from tokenizers.pre_tokenizers import Whitespace
 from sklearn.model_selection import StratifiedKFold
 
-# Hyperparameters:
-EPOCHS = 32
-LR = 0.00001
-LR_DECREASE = 0.1
-BATCH_SIZE = 96
-WEIGHT_DECAY = 0.0001
-DROP_OUT = 0.3
-PATIENCE = 5
-LOSS_DELTA = 0.001
-GRADIENT_CLIPPING = 0.05
-EMBED_DIM = 64
-K = 10
+from architecture import ClassifierNN, HateSpeechDataset, EPOCHS, LR, LR_DECREASE, BATCH_SIZE, WEIGHT_DECAY, DROP_OUT, PATIENCE, LOSS_DELTA, GRADIENT_CLIPPING, EMBED_DIM, K
 
 if torch.cuda.is_available():
     device = torch.device('cuda')
@@ -33,18 +22,6 @@ else:
     device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
 
 READ_FROM_CACHE = True
-
-class HateSpeechDataset(Dataset):
-    def __init__(self, contents):
-        super(HateSpeechDataset, self).__init__()
-        self.contents = contents
-        self.nClasses = len({'hate', 'maybe hate', 'not hate'})
-
-    def __getitem__(self, index):
-        return self.contents[index]
-    
-    def __len__(self):
-        return len(self.contents)
     
 def get_class(annotations):
     score = 0
@@ -212,49 +189,11 @@ def collate_batch(batch):
 
 kf = StratifiedKFold(n_splits=K, shuffle=True)
 
-class ClassifierNN(nn.Module):
-    def __init__(self, vocab_size, embed_dim, num_class):
-        super(ClassifierNN, self).__init__()
-        self.embedding = nn.EmbeddingBag(vocab_size, embed_dim)
-        self.hidden_size1 = 128
-        self.hidden_size2 = 64
-        self.fc1 = nn.Linear(embed_dim, self.hidden_size1)
-        self.fc2 = nn.Linear(self.hidden_size1, self.hidden_size2)
-        self.fc3 = nn.Linear(self.hidden_size2, num_class)
-        self.dropout = nn.Dropout(DROP_OUT)
-        self.batch_norm1 = nn.BatchNorm1d(self.hidden_size1)
-        self.batch_norm2 = nn.BatchNorm1d(self.hidden_size2)
-        self.activation = nn.ReLU()
-        self.init_weights()
-
-    def init_weights(self):
-        nn.init.xavier_uniform_(self.embedding.weight)
-        nn.init.xavier_uniform_(self.fc1.weight)
-        nn.init.xavier_uniform_(self.fc2.weight)
-        nn.init.xavier_uniform_(self.fc3.weight)
-        self.fc1.bias.data.zero_()
-        self.fc2.bias.data.zero_()
-        self.fc3.bias.data.zero_()
-
-    def forward(self, text, offsets):
-        embedded = self.embedding(text, offsets)
-        hidden = self.fc1(embedded)
-        hidden = self.batch_norm1(hidden)
-        hidden = self.activation(hidden)
-        hidden = self.dropout(hidden)
-
-        hidden = self.fc2(hidden)
-        hidden = self.batch_norm2(hidden)
-        hidden = self.activation(hidden)
-        hidden = self.dropout(hidden)
-
-        output = self.fc3(hidden)
-        return output
-
 vocab_size = tokenizer.get_vocab_size()
 total_accuracy = None
 overall_best_loss = float('inf')
 fold_results = []
+
 model_path = os.path.join(os.path.dirname(os.path.realpath(os.path.dirname(__file__))), 'model.pth')
 
 start_time = time()
@@ -266,7 +205,7 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(dataset, [d[0] for d in all
     train_loader = DataLoader(train_subset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch)
     val_loader = DataLoader(val_subset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch)
     
-    model = ClassifierNN(vocab_size, EMBED_DIM, dataset.nClasses).to(device)
+    model = ClassifierNN(vocab_size, embed_dim=EMBED_DIM, num_class=dataset.nClasses, dropout=DROP_OUT).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=LR_DECREASE, patience=2)
@@ -325,7 +264,6 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(dataset, [d[0] for d in all
 
         if val_loss < best_loss - LOSS_DELTA:
             if val_loss < overall_best_loss:
-                torch.save(model.state_dict(), model_path)
                 overall_best_loss = val_loss
             best_loss = val_loss
             patience_counter = 0
@@ -342,10 +280,4 @@ avg_loss = sum([result[0] for result in fold_results]) / K
 avg_accuracy = sum([result[1] for result in fold_results]) / K
 print(f'Average Validation Loss: {avg_loss:.4f}, Average Accuracy: {avg_accuracy:.4f}')
 
-def predict(text, text_pipeline):
-    with torch.no_grad():
-        text = torch.tensor(text_pipeline(text), dtype=torch.int64)
-        output = model(text, torch.tensor([0]))
-        return output.argmax(1).item()
-    
-model = model.to('cpu')
+torch.save(model.state_dict(), model_path)
