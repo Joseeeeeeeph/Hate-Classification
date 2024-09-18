@@ -12,7 +12,7 @@ try:
     text_pipeline = lambda x: tokenizer.encode(x).ids
 
     model = ClassifierNN(tokenizer.get_vocab_size(), EMBED_DIM, HateSpeechDataset([]).nClasses, DROP_OUT)
-    model.load_state_dict(torch.load(model_path, weights_only=False))
+    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu'), weights_only=False))
 except:
     print('Training Model:')
     from src.model import model, text_pipeline
@@ -23,7 +23,7 @@ def predict(text, text_pipeline):
         output = model(text, torch.tensor([0]))
         return output.argmax(1).item()
     
-model = model.to('cpu').eval()
+model = model.eval()
 
 remove_links = lambda x: ' '.join([s for s in x.split() if 'http' not in s])
 remove_punctuation = lambda x: ''.join([c for c in x if c not in r'!?()}{[]\'"“”`,,.…^+=/:;@#~|%¬\\£$€¥¢'])
