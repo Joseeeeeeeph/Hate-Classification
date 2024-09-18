@@ -20,10 +20,13 @@ except:
 def predict(text, text_pipeline):
     with torch.no_grad():
         text = torch.tensor(text_pipeline(text), dtype=torch.int64)
-        output = model(text, torch.tensor([0]))
-        return output.argmax(1).item()
+        if len(text) <= 1:
+            return 0
+        else:
+            output = model(text, torch.tensor([0]))
+            return output.argmax(1).item()
     
-model = model.eval()
+model.eval()
 
 remove_links = lambda x: ' '.join([s for s in x.split() if 'http' not in s])
 remove_punctuation = lambda x: ''.join([c for c in x if c not in r'!?()}{[]\'"“”`,,.…^+=/:;@#~|%¬\\£$€¥¢'])
