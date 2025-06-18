@@ -8,8 +8,8 @@ For documentation: ***hate classification using machine learning.pdf***
 Additional files included in the repository:
 
 + *model.pth* - the model file.
-+ *model.py* - model trainer.
-+ *architecture.py* - the file that contains the hyperparameters, the neural network architecture, and the dataset class.
++ *train.py* - the model trainer.
++ *architecture.py* - the file that contains the neural network architecture and the dataset class.
 + *build.py* - builds the datasets.
 + *normalise.py* - normalises the data and removes unnecessary characters.
 + *notebook.ipynb* - test notebook for a more interactive view of the model.
