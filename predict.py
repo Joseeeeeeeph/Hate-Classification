@@ -15,7 +15,7 @@ try:
     model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu'), weights_only=False))
 except:
     print('Training Model:')
-    from src.model import model, text_pipeline
+    from train import model, text_pipeline
 
 def predict(text):
     with torch.no_grad():
