@@ -2,7 +2,7 @@ import os
 import torch
 from tokenizers import Tokenizer
 
-from src.architecture import ClassifierNN, HateSpeechDataset, EMBED_DIM, DROP_OUT
+from src.architecture import AttentionLSTMClassifier, HateSpeechDataset
 
 model_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'model.pth')
 tokenizer_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'src/tokenizer.json')
@@ -11,19 +11,21 @@ try:
     tokenizer = Tokenizer.from_file(tokenizer_path)
     text_pipeline = lambda x: tokenizer.encode(x).ids
 
-    model = ClassifierNN(tokenizer.get_vocab_size(), EMBED_DIM, HateSpeechDataset([]).nClasses, DROP_OUT)
+    model = AttentionLSTMClassifier(HateSpeechDataset([]).nClasses, tokenizer)
     model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu'), weights_only=False))
 except:
     print('Training Model:')
     from src.model import model, text_pipeline
 
-def predict(text, text_pipeline):
+def predict(text):
     with torch.no_grad():
-        text = torch.tensor(text_pipeline(text), dtype=torch.int64)
+        tokenised_text = text_pipeline(text)
+        text_tensor = torch.tensor([tokenised_text], dtype=torch.int64)
+        length = torch.tensor([len(tokenised_text)], dtype=torch.int64)
         if len(text) <= 1:
             return 0
         else:
-            output = model(text, torch.tensor([0]))
+            output = model(text_tensor, length)
             return output.argmax(1).item()
     
 model.eval()
@@ -43,7 +45,7 @@ def main():
         if message == '!quit':
             exit()
         else:
-            print('"' + message + '" is {}\n'.format(classify(predict(normalise(message), text_pipeline))))
+            print(f'"{message}" is {classify(predict(normalise(message)))}\n')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
